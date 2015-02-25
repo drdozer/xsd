@@ -16,3 +16,8 @@ trait XsdBuiltInHierarchy[xsd <: XsdBuiltIn]
           with BuiltInPrimitivesHierarchy[xsd]
           with StringTypesHierarchy[xsd]
           with NumericTypesHierarchy[xsd]
+{
+  override type anySimpleTypesDescendents = SimpleTypeSubtypes_BuiltInPrimitives
+  override type stringDescendents = stringSubtypes_StringTypes
+  override type decimalDescendents = decimalSubtypes_NumericTypes
+}
