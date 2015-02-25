@@ -17,7 +17,7 @@ trait AnyType {
 
   def anyTypeHierarchy: xsd#anyType >:~> xsd#anySimpleType
 
-  type SimpleTypeSubtypes
+  type SimpleTypeSubtypes <: Coproduct
   def anySimpleTypeHierarchy: (xsd#anySimpleType >:~> SimpleTypeSubtypes)#sealing
 
 }
@@ -58,10 +58,10 @@ trait BuiltInPrimitives {
   // this is a whitness that SimpleTypesSubtypes contains the subtypes we declare here
   def simpleTypesHasSubtypes: Basis[anyTypeHierarchy.SimpleTypeSubtypes, SimpleTypeSubtypes_BuiltInPrimitives]
 
-  type StringSubtypes
+  type StringSubtypes <: Coproduct
   def stringHierarchy: xsd#string >:~> StringSubtypes
 
-  type DecimalSubtypes
+  type DecimalSubtypes <: Coproduct
   def decimalHierarchy: xsd#decimal >:~> DecimalSubtypes
 
 }
