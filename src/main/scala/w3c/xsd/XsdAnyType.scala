@@ -49,8 +49,38 @@ trait BuiltInPrimitives {
 
 @typeclass trait BuiltInPrimitivesHierarchy[xsd <: AnyType with BuiltInPrimitives] {
 
-  type SimpleTypeSubtypes = Coproduct.`xsd#string, xsd#duration, xsd#dateTime, xsd#time, xsd#date, xsd#gYearMonth, xsd#gYear, xsd#gMonthDay, xsd#gDay, xsd#gMonth, xsd#boolean, xsd#base64Binary, xsd#hexBinary, xsd#float, xsd#decimal, xsd#double, xsd#anyURI, xsd#QName, xsd#NOTATION`.T
+  def simpleTypesHasSubtypes:  Coproduct.`xsd#string, xsd#duration, xsd#dateTime, xsd#time, xsd#date, xsd#gYearMonth, xsd#gYear, xsd#gMonthDay, xsd#gDay, xsd#gMonth, xsd#boolean, xsd#base64Binary, xsd#hexBinary, xsd#float, xsd#decimal, xsd#double, xsd#anyURI, xsd#QName, xsd#NOTATION`.T
 
+  type StringSubtypes
+  def stringHierarchy: xsd#string >:~> StringSubtypes
+
+  type DecimalSubtypes
+  def decimalHierarchy: xsd#decimal >:~> DecimalSubtypes
+
+}
+
+trait StringTypes {
+
+  self : BuiltInPrimitives =>
+
+  type normalizedString
+    type token
+    type language
+    type Name
+    type NMTOKEN
+    type NCName
+    type ID
+    type IDREF
+    type ENTITY
+    type IDREFS
+    type ENTITIES
+
+}
+
+@typeclass trait StringTypesHierarchy[xsd <: AnyType with BuiltInPrimitives with StringTypes] {
+
+
+  def stringHierarchy: xsd#string >:~> xsd#normalizedString
 
 
 }

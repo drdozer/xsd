@@ -1,10 +1,12 @@
 package w3c.typeclass
 
 import shapeless._
-import shapeless.ops.coproduct.ToHList
+import shapeless.ops.coproduct.{ExtendRight, ToHList}
 import shapeless.ops.hlist._
 import shapeless.poly._
 import simulacrum.{op, typeclass}
+
+import scala.annotation.implicitNotFound
 
 
 /**
@@ -62,15 +64,12 @@ object Caster {
  * @tparam X    the result type
  * @tparam Fs   a `HList` of functions from downcast types of `U` to `X`
  */
+@implicitNotFound("Could not find a CastFolder from ${U} that can fold to ${X} using the functions ${Fs}")
 trait CastFolder[U, X, Fs] {
   def fold(u: U, fs: Fs): Option[X]
 }
 
 object CastFolder {
-
-  trait fx[X] {
-    type λ[T] = T => X
-  }
 
   /**
    * Folding over no functions produces None.
@@ -93,26 +92,11 @@ object CastFolder {
     def fold(u: U, fs: (D => X)::L): Option[X] = caster.fold(u)(fs.head) orElse lFolder.fold(u, fs.tail)
   }
 
-
-  implicit def sealedFolder[U, Ds <: Coproduct, X, Hs <: HList, Fs <: HList]
-  (implicit
-    seal: Sealed[U, Ds],
-    coProdAsHList: ToHList.Aux[Ds, Hs],
-    asFunctions: Mapped.Aux[Hs, fx[X]#λ, Fs],
-    folder: CastFolder[U, X, Fs]): CastFolder[U, X, Fs] = new CastFolder[U, X, Fs] {
-    def fold(u: U, fs: Fs): Option[X] = folder.fold(u, fs)
-  }
-
-  implicit def foldWithTuple[U, X, Fs <: HList, Ts]
+  implicit def foldCastingWithTuple[U, X, Fs <: HList, Ts]
   (implicit
    toHList: Generic.Aux[Ts, Fs],
    folder: CastFolder[U, X, Fs]): CastFolder[U, X, Ts] = new CastFolder[U, X, Ts] {
     override def fold(u: U, ts: Ts) = folder.fold(u, toHList.to(ts))
-  }
-
-  implicit class FolderSyntax[U](_u: U) {
-    def foldO[X, Fs](fs: Fs)(implicit folder: CastFolder[U, X, Fs]): Option[X] = folder.fold(_u, fs)
-    def fold[X, Fs](fs: Fs)(implicit folder: CastFolder[U, X, Fs]): X = folder.fold(_u, fs).get
   }
 }
 
@@ -123,8 +107,44 @@ object CastFolder {
  * @tparam U  the upcast type
  * @tparam Ds the downcast types
  */
-trait Sealed[U, Ds]
+@implicitNotFound("Could not find a sealing for ${U} with downcasts ${Ds}")
+sealed trait Sealing[U, Ds]
 
+object Sealing {
+  def apply[U, Ds]: Sealing[U, Ds] = new Sealing[U, Ds] {}
+}
+
+
+trait SealingFolder[U, X, Fs] {
+  def fold(u: U, fs: Fs): Option[X]
+}
+
+object SealingFolder {
+
+  implicit def sealingFolder[U, Ds <: Coproduct, X, Hs <: HList, Fs <: HList]
+    (implicit
+     sealing: Sealing[U, Ds],
+     coProdAsHList: ToHList.Aux[Ds, Hs],
+     asFunctions: WithRange.Aux[Hs, X, Fs],
+     folder: CastFolder[U, X, Fs]): SealingFolder[U, X, Fs] = new SealingFolder[U, X, Fs]
+    {
+      def fold(u: U, fs: Fs): Option[X] = folder.fold(u, fs)
+    }
+
+  implicit def foldSealingWithTuple[U, X, Fs <: HList, Ts]
+  (implicit
+   toHList: Generic.Aux[Ts, Fs],
+   folder: SealingFolder[U, X, Fs]): SealingFolder[U, X, Ts] = new SealingFolder[U, X, Ts] {
+    override def fold(u: U, ts: Ts) = folder.fold(u, toHList.to(ts))
+  }
+
+  implicit class SealingSyntax[U, Ds](_u: U) {
+    def foldS[X, Fs](fs: Fs)
+                    (implicit
+                     sealing: Sealing[U, Ds],
+                     sealingFolder: SealingFolder[U, X, Fs]): X = sealingFolder.fold(_u, fs).get
+  }
+}
 
 
 /**
@@ -141,8 +161,44 @@ trait Sealed[U, Ds]
  * @tparam U  the upcast type
  * @tparam Ds the downcast types
  */
-trait >:~> [U, Ds] {
-  type seal = Sealed[U, Ds]
-//
-//  def fold[X](u: U)(fs: Fs)(implicit folder: CastFolder[U, X, Fs]): X = folder.fold(u, Fs).getOrElse(defaut(u)).get
+sealed trait >:~> [U, Ds] {
+  type sealing = Sealing[U, Ds]
+
+  def fold[X, Fs](u: U, fs: Fs)(implicit folder: CastFolder[U, X, Fs]): X = folder.fold(u, fs).get
+}
+
+object >:~> {
+  def apply[U, Ds]: U >:~> Ds = new >:~>[U, Ds] {}
+}
+
+trait HierarchyFolder[U, X, Fs] {
+  def fold(u: U, fs: Fs): Option[X]
+}
+
+object HierarchyFolder {
+
+  implicit def hierarchyFolder[U, Ds <: Coproduct, X, DsU <: Coproduct, Hs <: HList, Fs <: HList]
+    (implicit
+     hierarchy: U >:~> Ds,
+     uOnEnd: ExtendRight.Aux[Ds, U, DsU],
+     coProdAsHList: ToHList.Aux[DsU, Hs],
+     asFunctions: WithRange.Aux[Hs, X, Fs],
+     folder: CastFolder[U, X, Fs]): HierarchyFolder[U, X, Fs] = new HierarchyFolder[U, X, Fs]
+    {
+      def fold(u: U, fs: Fs): Option[X] = folder.fold(u, fs)
+    }
+
+  implicit def foldHierarchyWithTuple[U, X, Fs <: HList, Ts]
+  (implicit
+   toHList: Generic.Aux[Ts, Fs],
+   folder: HierarchyFolder[U, X, Fs]): HierarchyFolder[U, X, Ts] = new HierarchyFolder[U, X, Ts] {
+    override def fold(u: U, ts: Ts) = folder.fold(u, toHList.to(ts))
+  }
+
+  implicit class HierarchySyntax[U, Ds](_u: U) {
+    def foldH[X, Fs](fs: Fs)
+                    (implicit
+                     hierarchy: U >:~> Ds,
+                     hierarchyFolder: HierarchyFolder[U, X, Fs]): X = hierarchyFolder.fold(_u, fs).get
+  }
 }
