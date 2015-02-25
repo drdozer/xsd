@@ -171,6 +171,10 @@ object >:~> {
   def apply[U, Ds]: U >:~> Ds = new >:~>[U, Ds] {}
 }
 
+object Hierarchy {
+  def apply[U, Ds]: U >:~> Ds = >:~>.apply[U, Ds]
+}
+
 trait HierarchyFolder[U, X, Fs] {
   def fold(u: U, fs: Fs): Option[X]
 }

@@ -2,6 +2,7 @@ package w3c
 package xsd
 
 import shapeless.Coproduct
+import shapeless.ops.coproduct.Basis
 import typeclass._
 import simulacrum._
 
@@ -17,7 +18,7 @@ trait AnyType {
   def anyTypeHierarchy: xsd#anyType >:~> xsd#anySimpleType
 
   type SimpleTypeSubtypes
-  def anySimpleTypeHierarchy: xsd#anySimpleType >:~> SimpleTypeSubtypes
+  def anySimpleTypeHierarchy: (xsd#anySimpleType >:~> SimpleTypeSubtypes)#sealing
 
 }
 
@@ -49,7 +50,13 @@ trait BuiltInPrimitives {
 
 @typeclass trait BuiltInPrimitivesHierarchy[xsd <: AnyType with BuiltInPrimitives] {
 
-  def simpleTypesHasSubtypes:  Coproduct.`xsd#string, xsd#duration, xsd#dateTime, xsd#time, xsd#date, xsd#gYearMonth, xsd#gYear, xsd#gMonthDay, xsd#gDay, xsd#gMonth, xsd#boolean, xsd#base64Binary, xsd#hexBinary, xsd#float, xsd#decimal, xsd#double, xsd#anyURI, xsd#QName, xsd#NOTATION`.T
+  implicit val anyTypeHierarchy: AnyTypeHierarchy[xsd]
+
+  // our extensions of anySimpleTypeHierarcy is this coproduct
+  type SimpleTypeSubtypes_BuiltInPrimitives = Coproduct.`xsd#string, xsd#duration, xsd#dateTime, xsd#time, xsd#date, xsd#gYearMonth, xsd#gYear, xsd#gMonthDay, xsd#gDay, xsd#gMonth, xsd#boolean, xsd#base64Binary, xsd#hexBinary, xsd#float, xsd#decimal, xsd#double, xsd#anyURI, xsd#QName, xsd#NOTATION`.T
+
+  // this is a whitness that SimpleTypesSubtypes contains the subtypes we declare here
+  def simpleTypesHasSubtypes: Basis[anyTypeHierarchy.SimpleTypeSubtypes, SimpleTypeSubtypes_BuiltInPrimitives]
 
   type StringSubtypes
   def stringHierarchy: xsd#string >:~> StringSubtypes

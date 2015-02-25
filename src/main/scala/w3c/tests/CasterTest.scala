@@ -16,7 +16,6 @@ object CasterTest {
     override def apply(i: Int) = i.toLong
   }
 
-
   implicit val longShortCaster: Caster[Long, Short] = new Caster[Long, Short] {
     override def unapply(l: Long): Option[Short] = if(l > Short.MaxValue) None else Some(l.toShort)
     override def apply(s: Short) = s.toLong
@@ -84,7 +83,7 @@ object CasterTest {
   def withHierarchy: Unit = {
     import HierarchyFolder._
 
-    implicit val longHierarchy: Long >:~> shortOrInt = >:~>[Long, shortOrInt]
+    implicit val longHierarchy: Long >:~> shortOrInt = Hierarchy[Long, shortOrInt]
 
     println("Folding over `U` using syntax from Sealed using a hlist of functions")
     println(456456445455642312L.foldH(fsH1))
