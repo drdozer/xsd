@@ -1,8 +1,8 @@
 package w3c.tests
 
-import w3c.xsd.XsdLiteralSyntax
-import XsdLiteralSyntax._
-import XsdLiteralSyntax.ops._
+import w3c.xsd._
+import LexicalSpace._
+import LexicalSpace.ops._
 
 
 /**
@@ -13,20 +13,20 @@ import XsdLiteralSyntax.ops._
 object XsdLitTest {
 
   // note: this is broken - it's to illustrate the typeclasses
-  implicit object integer extends XsdLiteralSyntax[Int] {
+  implicit object integer extends LexicalSpace[Int] {
     val xsdType = "xsd:integer"
 
     override def render(lit: Int) = s"$lit^$xsdType"
 
-    override def parse(s: String) = s.toInt
+    override def parse(s: String) = Right(s.toInt)
   }
 
   def main(args: Array[String]): Unit = {
 
-    val rImpl = implicitly[XsdLiteralSyntax[Int]].render(42)
+    val rImpl = implicitly[LexicalSpace[Int]].render(42)
     println(s"Rendered using an implicitly summoning: $rImpl")
 
-    val pImpl = implicitly[XsdLiteralSyntax[Int]].parse("42")
+    val pImpl = implicitly[LexicalSpace[Int]].parse("42")
     println(s"Parsed using an implicit summoning: $pImpl")
 
     val rStx = "42"^integer

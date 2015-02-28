@@ -22,3 +22,9 @@ trait AnyType {
 
 }
 
+@typeclass trait AnyTypeDatatypeIris[xsd <: AnyType] {
+
+  implicit def anyTypeIri: DatatypeIri[xsd#anyType] = DatatypeIri("xsd:anyType")
+  implicit def anySimpleTypeIri: DatatypeIri[xsd#anySimpleType] = DatatypeIri("xsd:anySimpleType")
+
+}

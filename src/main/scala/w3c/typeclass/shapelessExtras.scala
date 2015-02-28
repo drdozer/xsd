@@ -57,3 +57,59 @@ object WithRange {
   (implicit mt: WithRange.Aux[T, X, OutM]): WithRange.Aux[H :: T, X, (H => X) :: OutM] =
     new WithRange[H :: T, X] { type Out = (H => X) :: OutM }
 }
+
+
+/**
+ * Collect implicits for some type `I[_]` for each element of a coproduct into an HList.
+ *
+ * @tparam I    the implicit to collect
+ * @tparam CP   the coproduct to collect for
+ */
+trait AllImplicitly[I[_], CP <: Coproduct] {
+  type Out <: HList
+  val out: Out
+}
+
+object AllImplicitly {
+
+  def apply[I[_], CP <: Coproduct](implicit all: AllImplicitly[I, CP]): AllImplicitly[I, CP] = all
+
+  type Aux[I[_], CP <: Coproduct, Out0] = AllImplicitly[I, CP] { type Out = Out0 }
+
+  def nillImplicitly[I[_]]: AllImplicitly[I, CNil] = new AllImplicitly[I, CNil] {
+    type Out = HNil
+    val out = HNil
+  }
+
+  def cconsImplicitly[I[_], H, Tl <: Coproduct]
+  (implicit ih: I[H], allT: AllImplicitly[I, Tl]): AllImplicitly[I, H :+: Tl] = new AllImplicitly[I, H :+: Tl] {
+    type Out = I[H] :: allT.Out
+    val out = ih :: allT.out
+  }
+
+}
+
+trait ZipApply[FL <: HList, AC <: Coproduct] extends DepFn2[FL, AC] { type Out <: Coproduct }
+
+object ZipApply {
+  def apply[FL <: HList, AC <: Coproduct](implicit zip: ZipApply[FL, AC]): Aux[FL, AC, zip.Out] = zip
+
+  type Aux[FL <: HList, AC <: Coproduct, Out0 <: Coproduct] = ZipApply[FL, AC] { type Out = Out0 }
+
+  implicit def hnilZipApply: Aux[HNil, CNil, CNil] =
+    new ZipApply[HNil, CNil] {
+      type Out = CNil
+      def apply(fl: HNil, ac: CNil): Out = ac
+    }
+
+  implicit def hconsZipApply[H, A, LCons <: HList, CCons <: Coproduct, ZCons <: Coproduct]
+  (implicit zipApply: ZipApply.Aux[LCons, CCons, ZCons]): Aux[(H => A) :: LCons, H :+: CCons, A :+: ZCons] =
+    new ZipApply[(H => A) :: LCons, H :+: CCons] {
+      type Out = A :+: ZCons
+
+      override def apply(fList: (H => A) :: LCons, union: H :+: CCons): Out = union match {
+        case Inl(h) => Inl(fList.head(h))
+        case Inr(tl) =>Inr(zipApply(fList.tail, tl))
+      }
+    }
+}
