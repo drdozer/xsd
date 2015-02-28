@@ -3,10 +3,10 @@ package w3c.xsd
 import shapeless.PolyDefns.{~>, ->}
 import shapeless.ops.coproduct
 import shapeless.ops.coproduct.Folder
-import shapeless.ops.hlist.Mapper
+import shapeless.ops.hlist.{LeftFolder, RightFolder, ConstMapper, Mapper}
 import shapeless._
 import simulacrum.typeclass
-import w3c.typeclass.{ZipApply, AllImplicitly}
+import w3c.typeclass.{AllImplicitly}
 
 /**
  * A lexical space for the datatype `DT`.
@@ -50,22 +50,48 @@ object LexicalSpace {
     def apply[DT](ls: LexicalSpace[DT]): DT => String = (dt: DT) => ls.render(dt)
   }
 
-  def unionLexicalSpace[U, Ts <: Coproduct, Is <: HList, Fs <: HList, As <: Coproduct]
+  type ft[X] = String => Result[X]
+  object toParse extends (LexicalSpace ~> ft) {
+    def apply[DT](ls: LexicalSpace[DT]): String => Result[DT] = (s: String) => ls.parse(s)
+  }
+
+  object mergeResults extends Poly {
+    implicit def caseRR[T, Ts <: Coproduct] = use((lhs: Result[T], rhs: Result[Ts]) => (lhs, rhs) match {
+      case (Left(tErrs), Left(tsErrs)) => Left(tErrs ++ tsErrs)
+      case (Left(_), Right(ts)) => Right(Inr(ts))
+      case (Right(t), _) => Right(Inl(t))
+    })
+  }
+
+  def unionLexicalSpace[
+      U, Ts <: Coproduct, Is <: HList,
+      RendFs <: HList, As <: Coproduct,
+     ParseFs <: HList, Strings <: HList, Parseds <: HList]
   (implicit
    unionDatatype: UnionDatatype[U, Ts],
    lexicalSpaces: AllImplicitly.Aux[LexicalSpace, Ts, Is],
-   mapper: Mapper.Aux[toRender.type, Is, Fs],
-   zipApply: ZipApply.Aux[Fs, Ts, As],
-   folder: Folder.Aux[PolyDefns.identity.type, As, String]): LexicalSpace[U] = new LexicalSpace[U]
+   renderMapper: Mapper.Aux[toRender.type, Is, RendFs],
+   zipRenderers: w3c.typeclass.ZipApply.Aux[RendFs, Ts, As],
+   foldOutString: Folder.Aux[PolyDefns.identity.type, As, String],
+   parseMapper: Mapper.Aux[toParse.type, Is, ParseFs],
+    constMapper: ConstMapper.Aux[String, ParseFs, Strings],
+    zipParsers: shapeless.ops.hlist.ZipApply.Aux[ParseFs, Strings, Parseds],
+    foldOutParseResult: RightFolder.Aux[Parseds, Result[CNil], mergeResults.type, Result[Ts]]): LexicalSpace[U] = new LexicalSpace[U]
   {
     override def render(dt: U) = {
-      val renderers = lexicalSpaces.out.map(toRender)
+      val renderers = renderMapper(lexicalSpaces.out)
       val dtCP = unionDatatype.asCoproduct(dt)
-      val zipped = zipApply(renderers, dtCP)
-      folder.apply(zipped)
+      val rendered = zipRenderers(renderers, dtCP)
+      foldOutString.apply(rendered)
     }
 
-    override def parse(s: String) = ???
+    override def parse(s: String) = {
+      val parsers = parseMapper(lexicalSpaces.out)
+      val ss = constMapper(s, parsers)
+      val parsed = zipParsers.apply(parsers, ss)
+      val ts = foldOutParseResult.apply(parsed, Left(Seq()))
+      ts.right.map(unionDatatype.fromCoproduct)
+    }
   }
 
   type Result[T] = Either[Seq[String], T]
@@ -138,6 +164,7 @@ object ListDatatype {
  */
 trait UnionDatatype[U, Ts <: Coproduct] {
   def asCoproduct(u: U): Ts
+  def fromCoproduct(ts: Ts): U
 }
 
 object UnionDatatype {
