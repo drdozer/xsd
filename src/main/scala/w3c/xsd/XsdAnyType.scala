@@ -6,14 +6,14 @@ import shapeless.ops.coproduct.Basis
 import typeclass._
 import simulacrum._
 
-trait AnyType {
+trait XsdAnyType {
 
   type anyType
   type anySimpleType
 
 }
 
-@typeclass trait AnyTypeHierarchy[xsd <: AnyType] {
+@typeclass trait AnyTypeHierarchy[xsd <: XsdAnyType] {
 
   def anyTypeHierarchy: xsd#anyType >:~> xsd#anySimpleType
 
@@ -22,7 +22,7 @@ trait AnyType {
 
 }
 
-@typeclass trait AnyTypeDatatypeIris[xsd <: AnyType] {
+@typeclass trait AnyTypeDatatypeIris[xsd <: XsdAnyType] {
 
   implicit def anyTypeIri: DatatypeIri[xsd#anyType] = DatatypeIri("xsd:anyType")
   implicit def anySimpleTypeIri: DatatypeIri[xsd#anySimpleType] = DatatypeIri("xsd:anySimpleType")

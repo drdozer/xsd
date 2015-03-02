@@ -89,6 +89,41 @@ object AllImplicitly {
 
 }
 
+trait AllExist[L <: HList] {
+  val out: L
+}
+
+object AllExist {
+  def apply[L <: HList](implicit all: AllExist[L]): AllExist[L] = all
+
+  implicit def allHNil: AllExist[HNil] = new AllExist[HNil] {
+    override val out: HNil = HNil
+  }
+
+  implicit def allHCons[H, T <: HList](implicit h: H, allTail: AllExist[T]): AllExist[H :: T] =
+    new AllExist[H :: T] {
+      override val out: H :: T = h :: allTail.out
+    }
+}
+
+trait SomeExist[C <: Coproduct] {
+  val out: C
+}
+
+object SomeExist {
+  def apply[C <: Coproduct](implicit some: SomeExist[C]): SomeExist[C] = some
+
+  implicit def someInl[H, Tl <: Coproduct](implicit h: H): SomeExist[H :+: Tl] =
+    new SomeExist[H :+: Tl] {
+      val out = Inl(h)
+    }
+
+  implicit def someInr[H, Tl <: Coproduct](implicit someTl: SomeExist[Tl]): SomeExist[H :+: Tl] =
+    new SomeExist[H :+: Tl] {
+      val out = Inr(someTl.out)
+    }
+}
+
 trait ZipApply[FL <: HList, AC <: Coproduct] extends DepFn2[FL, AC] { type Out <: Coproduct }
 
 object ZipApply {

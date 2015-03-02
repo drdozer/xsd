@@ -32,7 +32,7 @@ trait NumericTypes {
 
 }
 
-trait NumericTypesHierarchy[xsd <: AnyType with BuiltInPrimitives with NumericTypes] {
+trait NumericTypesHierarchy[xsd <: XsdAnyType with BuiltInPrimitives with NumericTypes] {
 
   self: BuiltInPrimitivesHierarchy[xsd] =>
 

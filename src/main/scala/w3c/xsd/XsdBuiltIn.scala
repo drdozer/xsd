@@ -6,7 +6,7 @@ package w3c.xsd
  * @author Matthew Pocock
  */
 trait XsdBuiltIn
-  extends AnyType
+  extends XsdAnyType
           with BuiltInPrimitives
           with StringTypes
           with NumericTypes

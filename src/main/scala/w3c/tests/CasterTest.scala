@@ -12,13 +12,13 @@ import w3c.typeclass._
 object CasterTest {
 
   implicit val longIntCaster: Caster[Long, Int] = new Caster[Long, Int] {
-    override def unapply(l: Long): Option[Int] = if(l > Int.MaxValue) None else Some(l.toInt)
-    override def apply(i: Int) = i.toLong
+    override def downcast(l: Long): Option[Int] = if(l > Int.MaxValue) None else Some(l.toInt)
+    override def upcast(i: Int) = i.toLong
   }
 
   implicit val longShortCaster: Caster[Long, Short] = new Caster[Long, Short] {
-    override def unapply(l: Long): Option[Short] = if(l > Short.MaxValue) None else Some(l.toShort)
-    override def apply(s: Short) = s.toLong
+    override def downcast(l: Long): Option[Short] = if(l > Short.MaxValue) None else Some(l.toShort)
+    override def upcast(s: Short) = s.toLong
   }
 
   val fsH = { (s: Short) => s"Short($s)" } ::

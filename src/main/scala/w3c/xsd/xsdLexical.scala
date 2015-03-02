@@ -1,12 +1,10 @@
 package w3c.xsd
 
-import shapeless.PolyDefns.{~>, ->}
-import shapeless.ops.coproduct
-import shapeless.ops.coproduct.Folder
-import shapeless.ops.hlist.{LeftFolder, RightFolder, ConstMapper, Mapper}
 import shapeless._
+import shapeless.PolyDefns.~>
+import shapeless.ops.{coproduct, hlist}
 import simulacrum.typeclass
-import w3c.typeclass.{AllImplicitly}
+import w3c.typeclass.AllImplicitly
 
 /**
  * A lexical space for the datatype `DT`.
@@ -29,6 +27,9 @@ import w3c.typeclass.{AllImplicitly}
 
 object LexicalSpace {
 
+  /**
+   * A lexical space that represents space-separated values from the underlying list element's lexical space.
+   */
   def listLexicalSpace[L, E]
   (implicit
    listOf: ListDatatype.Aux[L, E],
@@ -63,6 +64,9 @@ object LexicalSpace {
     })
   }
 
+  /**
+   * A lexical space that represents the union of some memberTypes.
+   */
   def unionLexicalSpace[
       U, Ts <: Coproduct, Is <: HList,
       RendFs <: HList, As <: Coproduct,
@@ -70,13 +74,13 @@ object LexicalSpace {
   (implicit
    unionDatatype: UnionDatatype.Aux[U, Ts],
    lexicalSpaces: AllImplicitly.Aux[LexicalSpace, Ts, Is],
-   renderMapper: Mapper.Aux[toRender.type, Is, RendFs],
+   renderMapper: hlist.Mapper.Aux[toRender.type, Is, RendFs],
    zipRenderers: w3c.typeclass.ZipApply.Aux[RendFs, Ts, As],
-   foldOutString: Folder.Aux[PolyDefns.identity.type, As, String],
-   parseMapper: Mapper.Aux[toParse.type, Is, ParseFs],
-    constMapper: ConstMapper.Aux[String, ParseFs, Strings],
+   foldOutString: coproduct.Folder.Aux[PolyDefns.identity.type, As, String],
+   parseMapper: hlist.Mapper.Aux[toParse.type, Is, ParseFs],
+    constMapper: hlist.ConstMapper.Aux[String, ParseFs, Strings],
     zipParsers: shapeless.ops.hlist.ZipApply.Aux[ParseFs, Strings, Parseds],
-    foldOutParseResult: RightFolder.Aux[Parseds, Result[CNil], mergeResults.type, Result[Ts]]): LexicalSpace[U] = new LexicalSpace[U]
+    foldOutParseResult: hlist.RightFolder.Aux[Parseds, Result[CNil], mergeResults.type, Result[Ts]]): LexicalSpace[U] = new LexicalSpace[U]
   {
     override def render(dt: U) = {
       val renderers = renderMapper(lexicalSpaces.out)
@@ -99,91 +103,5 @@ object LexicalSpace {
   implicit class LexicalSyntax(val _s: String) extends AnyVal {
     def ^[DT](syntax: LexicalSpace[DT]): Result[DT] = syntax.parse(_s)
   }
-
-}
-
-
-/**
- * A facet
- * @tparam DT
- */
-trait Facet[DT]
-
-trait FundamentalFacet[DT] extends Facet[DT]
-
-trait Constraint[DT] extends Facet[DT]
-
-/**
- * Witness that `T` is a datatype.
- *
- * For `T` to be a datatype, it must have an associated instance of `LexicalSpace[T]`
- *
- * See: http://www.w3.org/TR/xmlschema-2/#typesystem
- *
- * @author Matthew Pocock
- */
-trait Datatype[T]
-
-
-/**
- * Witness that `T` is an atomic datatype.
- *
- * See: http://www.w3.org/TR/xmlschema-2/#atomic
- *
- * @tparam T
- */
-trait AtomicDatatype[T]
-
-/**
- * Witness that `L` is a list type, with elements of type `E`
- *
- * See: http://www.w3.org/TR/xmlschema-2/#list-datatypes
- *
- * @tparam L  the type that is an XSD list
- */
-trait ListDatatype[L] {
-  /**
-   * The element type of this list datatype.
-   */
-  type E
-
-  def size: Int
-  def elements(l: L): Seq[E]
-  def fromElements(es: E*): L
-}
-
-object ListDatatype {
-
-  type Aux[L, E0] = ListDatatype[L] { type E = E0 }
-
-  def apply[L : Datatype, E : AtomicDatatype]
-  (implicit dt: ListDatatype.Aux[L, E]): ListDatatype.Aux[L, E] = dt
-}
-
-
-/**
- * Witness that `U` is a union datatype, with elements of the types in the coproduct `Ts`.
- *
- * See: http://www.w3.org/TR/xmlschema-2/#union-datatypes
- *
- * @tparam U    the xsd union datatype
- */
-trait UnionDatatype[U] {
-  /** A coproduct of atomic types that make up this union */
-  type Ts <: Coproduct
-
-  def asCoproduct(u: U): Ts
-  def fromCoproduct(ts: Ts): U
-}
-
-object UnionDatatype {
-
-  type Aux[U, Ts0 <: Coproduct] = UnionDatatype[U] { type Ts = Ts0 }
-
-  type AllAtomicDatatype[Ts <: Coproduct] = AllImplicitly[AtomicDatatype, Ts]
-
-  def apply[U : Datatype, Ts <: Coproduct : AllAtomicDatatype]
-  (implicit dt: UnionDatatype.Aux[U, Ts]): UnionDatatype.Aux[U, Ts] = dt
-
 
 }

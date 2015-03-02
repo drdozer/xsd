@@ -2,10 +2,6 @@ package w3c.typeclass
 
 import shapeless._
 import shapeless.ops.coproduct.{ExtendRight, ToHList}
-import shapeless.ops.hlist._
-import shapeless.poly._
-import simulacrum.{op, typeclass}
-
 import scala.annotation.implicitNotFound
 
 
@@ -25,13 +21,13 @@ trait Caster[U, D]
    * 
    * This projects `D` to the more general type `U`.
    */
-  def apply(d: D): U
+  def upcast(d: D): U
 
   /** Witness a downcast relationship from `U` to `D`.
     * 
     * This projects some instances of `U` to a more specific type `D`.
     */
-  def unapply(u: U): Option[D]
+  def downcast(u: U): Option[D]
 
 
   /**
@@ -42,15 +38,15 @@ trait Caster[U, D]
    * @tparam X  the result type of the function folded
    * @return    the result of applying `f` to a successful downcast
    */
-  def fold[X](u: U)(f: D => X): Option[X] = unapply(u).map(f)
+  def fold[X](u: U)(f: D => X): Option[X] = downcast(u).map(f)
   
 }
 
 object Caster {
 
   implicit def noCast[U]: Caster[U, U] = new Caster[U, U] {
-    override def apply(d: U) = d
-    override def unapply(u: U) = Some(u)
+    override def upcast(d: U) = d
+    override def downcast(u: U) = Some(u)
   }
 
 }

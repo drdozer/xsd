@@ -12,7 +12,7 @@ import w3c.typeclass.>:~>
  */
 trait BuiltInPrimitives {
 
-  self : AnyType =>
+  self : XsdAnyType =>
 
   type string
   type duration
@@ -36,39 +36,61 @@ trait BuiltInPrimitives {
 
 }
 
-@typeclass trait BuiltInPrimitivesHierarchy[xsd <: AnyType with BuiltInPrimitives] {
+@typeclass trait BuiltInPrimitivesHierarchy[xs <: XsdAnyType with BuiltInPrimitives] {
 
-  self: AnyTypeHierarchy[xsd] =>
+  self: AnyTypeHierarchy[xs] =>
 
   // our extensions of anySimpleTypeHierarcy is this coproduct
   type SimpleTypeSubtypes_BuiltInPrimitives =
-    xsd#string :+:
-    xsd#duration :+:
-    xsd#dateTime :+:
-    xsd#time :+:
-    xsd#date :+:
-    xsd#gYearMonth :+:
-    xsd#gYear :+:
-    xsd#gMonthDay :+:
-    xsd#gDay :+:
-    xsd#gMonth :+:
-    xsd#boolean :+:
-    xsd#base64Binary :+:
-    xsd#hexBinary :+:
-    xsd#float :+:
-    xsd#decimal :+:
-    xsd#double :+:
-    xsd#anyURI :+:
-    xsd#QName :+:
-    xsd#NOTATION :+: CNil
+    xs#string :+:
+    xs#duration :+:
+    xs#dateTime :+:
+    xs#time :+:
+    xs#date :+:
+    xs#gYearMonth :+:
+    xs#gYear :+:
+    xs#gMonthDay :+:
+    xs#gDay :+:
+    xs#gMonth :+:
+    xs#boolean :+:
+    xs#base64Binary :+:
+    xs#hexBinary :+:
+    xs#float :+:
+    xs#decimal :+:
+    xs#double :+:
+    xs#anyURI :+:
+    xs#QName :+:
+    xs#NOTATION :+: CNil
 
   // this is a witness that SimpleTypesSubtypes contains the subtypes we declare here
   def simpleTypesHasBuiltInPrimitives: Basis[anySimpleTypesDescendents, SimpleTypeSubtypes_BuiltInPrimitives]
 
   type stringDescendents <: Coproduct
-  def stringHierarchy: xsd#string >:~> stringDescendents
+  def stringHierarchy: xs#string >:~> stringDescendents
 
   type decimalDescendents <: Coproduct
-  def decimalHierarchy: xsd#decimal >:~> decimalDescendents
+  def decimalHierarchy: xs#decimal >:~> decimalDescendents
 
+}
+
+@typeclass trait BuiltInPrimitivesTypes[xs <: XsdAnyType with BuiltInPrimitives] {
+  implicit def stringIsPrimitive: Primitive[xs#string]
+  implicit def durationIsPrimitive: Primitive[xs#duration]
+  implicit def dateTimeIsPrimitive: Primitive[xs#dateTime]
+  implicit def timeIsPrimitive: Primitive[xs#dateTime]
+  implicit def dateIsPrimitive: Primitive[xs#date]
+  implicit def gYearMonthIsPrimitive: Primitive[xs#gYearMonth]
+  implicit def gYearIsPrimitive: Primitive[xs#gYear]
+  implicit def gMonthDayIsPrimitive: Primitive[xs#gMonthDay]
+  implicit def gDayIsPrimitive: Primitive[xs#gDay]
+  implicit def gMonthIsPrimitive: Primitive[xs#gMonth]
+  implicit def booleanIsPrimitive: Primitive[xs#boolean]
+  implicit def base64BinaryIsPrimitive: Primitive[xs#base64Binary]
+  implicit def hexBinaryIsPrimitive: Primitive[xs#hexBinary]
+  implicit def floatIsPrimitive: Primitive[xs#float]
+  implicit def decimalIsPrimitive: Primitive[xs#decimal]
+  implicit def doubleIsPrimitive: Primitive[xs#double]
+  implicit def anyURIIsPrimitive: Primitive[xs#anyURI]
+  implicit def QNameIsPrimitive: Primitive[xs#QName]
+  implicit def NOTATIONIsPrimitive: Primitive[xs#NOTATION]
 }

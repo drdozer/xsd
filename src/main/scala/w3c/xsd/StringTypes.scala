@@ -24,7 +24,7 @@ trait StringTypes {
 
 }
 
-@typeclass trait StringTypesHierarchy[xsd <: AnyType with BuiltInPrimitives with StringTypes] {
+@typeclass trait StringTypesHierarchy[xsd <: XsdAnyType with BuiltInPrimitives with StringTypes] {
 
   self: BuiltInPrimitivesHierarchy[xsd] =>
 
