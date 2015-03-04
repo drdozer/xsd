@@ -1,8 +1,7 @@
 package w3c.xsd
 
 import shapeless._
-import simulacrum.typeclass
-import w3c.typeclass.{SomeExist, AllImplicitly}
+import w3c.typeclass.{SomeExists, AllImplicitly}
 
 // a Datatype is: Atomic | List | Union
 // a Datatype is: Primitive | Derived
@@ -118,7 +117,7 @@ trait UnionDatatype[U] extends Derived[U] {
 
 object UnionDatatype {
 
-  type Unionable[UT] = SomeExist[AtomicDatatype[UT] :+: ListDatatype[UT] :+: CNil]
+  type Unionable[UT] = SomeExists[AtomicDatatype[UT] :+: ListDatatype[UT] :+: CNil]
 
 
   type Aux[U, Ts0 <: Coproduct] = UnionDatatype[U] { type Ts = Ts0 }
@@ -147,6 +146,10 @@ trait Restricted[R] extends Datatype[R] {
 
   /**
    * The type of the zero or more applied facets.
+   *
+   * These facet applications are over the type `BasedOn`, rather than `R`.
+   * For an instance of `BasedOn` to be an instance of `R`,
+   *
    */
   type AppliedFacets <: HList
 
@@ -160,19 +163,43 @@ object Restricted {
   type AuxBO[R, BO] = Restricted[R] { type BasedOn = BO }
 }
 
-trait BaseTypeOps[xs <: XsdAnyType] {
-  trait BaseTypeOf[DT] {
-    type BaseType
-  }
 
-  object BaseTypeOf {
-    type Aux[DT, BT] = BaseTypeOf[DT] { type BaseType = BT }
+/**
+ * Witness that `F` is a facet.
+ *
+ * See: http://www.w3.org/TR/xmlschema-2/#facets
+ */
+sealed trait Facet[F] {
+  type FA[DT] <: FacetApplication[F, DT]
+}
 
-    implicit def baseTypeOfRestricted[R, BO](implicit restricted: Restricted.AuxBO[R, BO]): BaseTypeOf.Aux[R, BO] =
-      new BaseTypeOf[R] { type BaseType = BO }
+/**
+ * Witness that `F` is a fundamental facet.
+ *
+ * See: http://www.w3.org/TR/xmlschema-2/#fundamental-facets
+ */
+trait FundamentalFacet[F] extends Facet[F]
 
-    implicit def baseTypeOfUnrestricted[DT]: BaseTypeOf.Aux[DT, xs#anySimpleType] = new BaseTypeOf[DT] {
-      type BaseType = xs#anySimpleType
-    }
-  }
+/** Witness that `F` is a constraint facet.
+  *
+  * See: http://www.w3.org/TR/xmlschema-2/#non-fundamental
+  */
+trait ConstrainingFacet[F] extends Facet[F]
+
+
+// F : Facet
+// DT : Datatype
+trait FacetApplication[F, DT]
+{
+  type requires
+}
+
+trait RestrictionApplication[F, DT] extends FacetApplication[F, DT]
+{
+  type restrictionValue
+  val byValue: restrictionValue
+}
+
+object RestrictionApplication {
+  type Aux[F, DT, RV] = RestrictionApplication[F, DT] { type restrictionValue = RV }
 }

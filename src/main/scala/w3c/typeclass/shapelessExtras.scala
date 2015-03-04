@@ -1,6 +1,7 @@
 package w3c.typeclass
 
 import shapeless._
+import shapeless.ops.coproduct.ToHList
 
 /**
  * Whitness that a hlist `T1::T2::T3::...` is related to an hlist [X] `(X=>T1)::(X=>T2)::(X=>T3)...`.
@@ -104,24 +105,33 @@ object AllExist {
     new AllExist[H :: T] {
       override val out: H :: T = h :: allTail.out
     }
+
+  implicit def allT[T, R <: HList](implicit
+                                   generic: Generic.Aux[T, R],
+                                   all: AllExist[R]): AllExist[R] = all
 }
 
-trait SomeExist[C <: Coproduct] {
+trait SomeExists[C <: Coproduct] {
   val out: C
 }
 
-object SomeExist {
-  def apply[C <: Coproduct](implicit some: SomeExist[C]): SomeExist[C] = some
+object SomeExists {
+  def apply[C <: Coproduct](implicit some: SomeExists[C]): SomeExists[C] = some
 
-  implicit def someInl[H, Tl <: Coproduct](implicit h: H): SomeExist[H :+: Tl] =
-    new SomeExist[H :+: Tl] {
+  implicit def someInl[H, Tl <: Coproduct](implicit h: H): SomeExists[H :+: Tl] =
+    new SomeExists[H :+: Tl] {
       val out = Inl(h)
     }
 
-  implicit def someInr[H, Tl <: Coproduct](implicit someTl: SomeExist[Tl]): SomeExist[H :+: Tl] =
-    new SomeExist[H :+: Tl] {
+  implicit def someInr[H, Tl <: Coproduct](implicit someTl: SomeExists[Tl]): SomeExists[H :+: Tl] =
+    new SomeExists[H :+: Tl] {
       val out = Inr(someTl.out)
     }
+
+  implicit def someT[T, R <: HList, C <: Coproduct](implicit
+                                                    generic: Generic.Aux[T, R], toHList: ToHList.Aux[C, R],
+                                                    some: SomeExists[C]): SomeExists[C] = some
+
 }
 
 trait ZipApply[FL <: HList, AC <: Coproduct] extends DepFn2[FL, AC] { type Out <: Coproduct }
