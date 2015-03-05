@@ -2,9 +2,7 @@ package w3c
 package xsd
 
 import shapeless.{:+:, CNil, Coproduct}
-import shapeless.ops.coproduct.Basis
 import typeclass._
-import simulacrum._
 
 trait XsdAnyType {
 
@@ -13,7 +11,7 @@ trait XsdAnyType {
 
 }
 
-@typeclass trait AnyTypeHierarchy[xsd <: XsdAnyType] {
+trait AnyTypeHierarchy[xsd <: XsdAnyType] {
 
   def anyTypeHierarchy: xsd#anyType >:~> xsd#anySimpleType
 
@@ -22,9 +20,13 @@ trait XsdAnyType {
 
 }
 
-@typeclass trait AnyTypeDatatypeIris[xsd <: XsdAnyType] {
+trait AnyTypeDatatypeQNames[xs <: XsdAnyType with XsdBuiltIn] {
 
-  implicit def anyTypeIri: DatatypeIri[xsd#anyType] = DatatypeIri("xsd:anyType")
-  implicit def anySimpleTypeIri: DatatypeIri[xsd#anySimpleType] = DatatypeIri("xsd:anySimpleType")
+  protected val namedTypes: NamedTypes[xs]
+  import namedTypes._
+  import LexicalSpace._
+
+  implicit def anyTypeQName: HasQName[xs#anyType] = HasQName("xsd:anyType")
+  implicit def anySimpleTypeIri: HasQName[xs#anySimpleType] = HasQName("xsd:anySimpleType")
 
 }

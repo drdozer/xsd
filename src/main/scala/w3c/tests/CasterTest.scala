@@ -1,8 +1,12 @@
 package w3c.tests
 
 import shapeless._
+import shapeless.Coproduct
 import shapeless.ops.hlist._
 import w3c.typeclass._
+import scalaz._
+import Scalaz._
+import FailureTree._
 
 /**
  *
@@ -11,13 +15,19 @@ import w3c.typeclass._
  */
 object CasterTest {
 
-  implicit val longIntCaster: Caster[Long, Int] = new Caster[Long, Int] {
-    override def downcast(l: Long): Option[Int] = if(l > Int.MaxValue) None else Some(l.toInt)
+  implicit val longIntCaster: Caster.Aux[Long, Int] = new Caster[Long] {
+    type D = Int
+    override def downcast(l: Long): Validation[FailureTree, Int] =
+      if(l > Int.MaxValue) s"$l is too large to be an int".failureTree.failure
+      else l.toInt.success
     override def upcast(i: Int) = i.toLong
   }
 
-  implicit val longShortCaster: Caster[Long, Short] = new Caster[Long, Short] {
-    override def downcast(l: Long): Option[Short] = if(l > Short.MaxValue) None else Some(l.toShort)
+  implicit val longShortCaster: Caster.Aux[Long, Short] = new Caster[Long] {
+    type D = Short
+    override def downcast(l: Long): Validation[FailureTree, Short] =
+      if(l > Short.MaxValue) s"$l is too large to be a short".failureTree.failure
+      else l.toShort.success
     override def upcast(s: Short) = s.toLong
   }
 

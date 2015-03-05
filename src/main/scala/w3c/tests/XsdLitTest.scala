@@ -1,9 +1,13 @@
 package w3c.tests
 
+import w3c.typeclass.{ThrowableFailure, FailureTree}
 import w3c.xsd._
 import LexicalSpace._
 import LexicalSpace.ops._
-
+import scala.util.Try
+import scalaz._
+import Scalaz._
+import FailureTree._
 
 /**
  *
@@ -18,7 +22,10 @@ object XsdLitTest {
 
     override def render(lit: Int) = s"$lit^$xsdType"
 
-    override def parse(s: String) = Right(s.toInt)
+    override def parse(s: String) = Try { s.toInt } match {
+      case scala.util.Success(i) => i.success
+      case scala.util.Failure(t) => t.failureTree.failure
+    }
   }
 
   def main(args: Array[String]): Unit = {
@@ -34,6 +41,9 @@ object XsdLitTest {
 
     val pStx = 42.render
     println(s"Parsed using syntax: $pStx")
+
+    val nonString = "hiMum"^integer
+    println(s"Parsed non-string as string: $nonString")
   }
 
 }

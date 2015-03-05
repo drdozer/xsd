@@ -1,20 +1,51 @@
 package w3c.typeclass
 
 import shapeless._
+import shapeless.Coproduct
 import shapeless.ops.coproduct.{ExtendRight, ToHList}
 import scala.annotation.implicitNotFound
 
+import scalaz._
+import Scalaz._
+
+sealed trait FailureTree {
+  def children: List[FailureTree]
+}
+
+object FailureTree {
+
+  implicit class FailureTreeStringSyntax(val _msg: String) extends AnyVal {
+    def failureTree: FailureTree = StringFailure(_msg, Nil)
+  }
+
+  implicit class FailureTreeStringLSyntax(val _ml: (String, List[FailureTree])) extends AnyVal {
+    def failureTree: FailureTree = StringFailure(_ml._1, _ml._2)
+  }
+
+  implicit class FailureTreeThrowableSyntax(val _t: Throwable) extends AnyVal {
+    def failureTree: FailureTree = ThrowableFailure(_t, Nil)
+  }
+
+}
+import FailureTree._
+
+final case class StringFailure(msg: String, children: List[FailureTree]) extends FailureTree
+final case class ThrowableFailure(t: Throwable, children: List[FailureTree]) extends FailureTree
 
 /**
  * Encapsulates an upcast/downcast pair.
  *
  * @tparam U  the upcast type
- * @tparam D  the downcast type
  *
  * @author Matthew Pocock
  */
-trait Caster[U, D]
+trait Caster[U]
 {
+
+  /**
+   * The downcast type.
+   */
+  type D
 
   /**
    * Witness an upcast relationship from `D` to `U`.
@@ -27,7 +58,7 @@ trait Caster[U, D]
     * 
     * This projects some instances of `U` to a more specific type `D`.
     */
-  def downcast(u: U): Option[D]
+  def downcast(u: U): Validation[FailureTree, D]
 
 
   /**
@@ -38,15 +69,17 @@ trait Caster[U, D]
    * @tparam X  the result type of the function folded
    * @return    the result of applying `f` to a successful downcast
    */
-  def fold[X](u: U)(f: D => X): Option[X] = downcast(u).map(f)
+  def fold[X](u: U)(f: D => X): Validation[FailureTree, X] = downcast(u).map(f)
   
 }
 
 object Caster {
+  type Aux[U, D0] = Caster[U] { type D = D0 }
 
-  implicit def noCast[U]: Caster[U, U] = new Caster[U, U] {
+  implicit def noCast[U]: Caster.Aux[U, U] = new Caster[U] {
+    type D = U
     override def upcast(d: U) = d
-    override def downcast(u: U) = Some(u)
+    override def downcast(u: U) = Success(u)
   }
 
 }
@@ -62,7 +95,7 @@ object Caster {
  */
 @implicitNotFound("Could not find a CastFolder from ${U} that can fold to ${X} using the functions ${Fs}")
 trait CastFolder[U, X, Fs] {
-  def fold(u: U, fs: Fs): Option[X]
+  def fold(u: U, fs: Fs): ValidationNel[FailureTree, X]
 }
 
 object CastFolder {
@@ -71,7 +104,7 @@ object CastFolder {
    * Folding over no functions produces None.
    */
   implicit def foldHNil[U, X]: CastFolder[U, X, HNil] = new CastFolder[U, X, HNil] {
-    def fold(u: U, hnil: HNil) = None
+    def fold(u: U, hnil: HNil) = "No successful cast found for fold.".failureTree.failureNel
   }
 
   /**
@@ -82,10 +115,11 @@ object CastFolder {
    */
   implicit def foldHCons[U, D, X, L <: HList]
   (implicit
-   caster: Caster[U, D],
+   caster: Caster.Aux[U, D],
    lFolder: CastFolder[U, X, L]): CastFolder[U, X, (D => X)::L] = new CastFolder[U, X, (D => X)::L]
   {
-    def fold(u: U, fs: (D => X)::L): Option[X] = caster.fold(u)(fs.head) orElse lFolder.fold(u, fs.tail)
+    def fold(u: U, fs: (D => X)::L): ValidationNel[FailureTree, X] =
+      caster.fold(u)(fs.head).leftMap(_.wrapNel) findSuccess lFolder.fold(u, fs.tail)
   }
 
   implicit def foldCastingWithTuple[U, X, Fs <: HList, Ts]
@@ -112,7 +146,7 @@ object Sealing {
 
 
 trait SealingFolder[U, X, Fs] {
-  def fold(u: U, fs: Fs): Option[X]
+  def fold(u: U, fs: Fs): ValidationNel[FailureTree, X]
 }
 
 object SealingFolder {
@@ -124,7 +158,7 @@ object SealingFolder {
      asFunctions: WithRange.Aux[Hs, X, Fs],
      folder: CastFolder[U, X, Fs]): SealingFolder[U, X, Fs] = new SealingFolder[U, X, Fs]
     {
-      def fold(u: U, fs: Fs): Option[X] = folder.fold(u, fs)
+      def fold(u: U, fs: Fs): ValidationNel[FailureTree, X] = folder.fold(u, fs)
     }
 
   implicit def foldSealingWithTuple[U, X, Fs <: HList, Ts]
@@ -138,7 +172,10 @@ object SealingFolder {
     def foldS[X, Fs](fs: Fs)
                     (implicit
                      sealing: Sealing[U, Ds],
-                     sealingFolder: SealingFolder[U, X, Fs]): X = sealingFolder.fold(_u, fs).get
+                     sealingFolder: SealingFolder[U, X, Fs]): X = sealingFolder.fold(_u, fs).fold(
+      f => throw new IllegalStateException(
+        "Folding over a sealed hierarchy failed. This would indicate that the hierarchy is not actually sealed. " + f),
+      s => s)
   }
 }
 
@@ -157,10 +194,9 @@ object SealingFolder {
  * @tparam U  the upcast type
  * @tparam Ds the downcast types
  */
+@implicitNotFound("Could not find hierarchy for ${U} with downcasts ${Ds}")
 sealed trait >:~> [U, Ds] {
   type sealing = Sealing[U, Ds]
-
-  def fold[X, Fs](u: U, fs: Fs)(implicit folder: CastFolder[U, X, Fs]): X = folder.fold(u, fs).get
 }
 
 object >:~> {
@@ -172,7 +208,7 @@ object Hierarchy {
 }
 
 trait HierarchyFolder[U, X, Fs] {
-  def fold(u: U, fs: Fs): Option[X]
+  def fold(u: U, fs: Fs): ValidationNel[FailureTree, X]
 }
 
 object HierarchyFolder {
@@ -185,7 +221,7 @@ object HierarchyFolder {
      asFunctions: WithRange.Aux[Hs, X, Fs],
      folder: CastFolder[U, X, Fs]): HierarchyFolder[U, X, Fs] = new HierarchyFolder[U, X, Fs]
     {
-      def fold(u: U, fs: Fs): Option[X] = folder.fold(u, fs)
+      def fold(u: U, fs: Fs): ValidationNel[FailureTree, X] = folder.fold(u, fs)
     }
 
   implicit def foldHierarchyWithTuple[U, X, Fs <: HList, Ts]
@@ -199,6 +235,9 @@ object HierarchyFolder {
     def foldH[X, Fs](fs: Fs)
                     (implicit
                      hierarchy: U >:~> Ds,
-                     hierarchyFolder: HierarchyFolder[U, X, Fs]): X = hierarchyFolder.fold(_u, fs).get
+                     hierarchyFolder: HierarchyFolder[U, X, Fs]): X =
+      hierarchyFolder.fold(_u, fs).fold(
+          f => throw new IllegalStateException("Unhandled case in hierarchy fold: " + f),
+          s => s)
   }
 }
