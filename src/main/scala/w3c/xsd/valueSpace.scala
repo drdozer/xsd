@@ -3,7 +3,11 @@ package w3c.xsd
 import simulacrum.{op, typeclass}
 import w3c.typeclass.Caster
 
-trait ValueSpace[xs <: XsdBuiltIn] {
+trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
+
+  @typeclass trait Identity[T] {
+    def identical(lhs: T, rhs: T): xs#boolean
+  }
 
   /**
    * Witness that a type has equality.

@@ -2,8 +2,8 @@ package w3c.tests
 
 import w3c.typeclass.{ThrowableFailure, FailureTree}
 import w3c.xsd._
-import LexicalSpace._
-import LexicalSpace.ops._
+import LexicalMapping._
+import LexicalMapping.ops._
 import scala.util.Try
 import scalaz._
 import Scalaz._
@@ -17,7 +17,7 @@ import FailureTree._
 object XsdLitTest {
 
   // note: this is broken - it's to illustrate the typeclasses
-  implicit object integer extends LexicalSpace[Int] {
+  implicit object integer extends LexicalMapping[Int] {
     val xsdType = "xsd:integer"
 
     override def render(lit: Int) = s"$lit^$xsdType"
@@ -30,10 +30,10 @@ object XsdLitTest {
 
   def main(args: Array[String]): Unit = {
 
-    val rImpl = implicitly[LexicalSpace[Int]].render(42)
+    val rImpl = implicitly[LexicalMapping[Int]].render(42)
     println(s"Rendered using an implicitly summoning: $rImpl")
 
-    val pImpl = implicitly[LexicalSpace[Int]].parse("42")
+    val pImpl = implicitly[LexicalMapping[Int]].parse("42")
     println(s"Parsed using an implicit summoning: $pImpl")
 
     val rStx = "42"^integer

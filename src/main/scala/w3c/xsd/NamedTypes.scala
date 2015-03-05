@@ -2,9 +2,12 @@ package w3c.xsd
 
 import simulacrum.typeclass
 
-trait NamedTypes[xs <: XsdBuiltIn] {
+/**
+ * Association of types with QNames.
+ */
+trait NamedTypes[xs <: SpecialAndPrimitiveTypes] {
 
-  protected implicit def QNameLexicalSpace: LexicalSpace[xs#QName]
+  protected implicit def QNameLexicalSpace: LexicalMapping[xs#QName]
 
   /**
    * A type has a qname associated with it.
@@ -15,7 +18,7 @@ trait NamedTypes[xs <: XsdBuiltIn] {
 
   object HasQName {
     def apply[T](qname: String): HasQName[T] = {
-      import LexicalSpace._
+      import LexicalMapping._
       val qn = qname.^^[xs#QName]
       new HasQName[T] {
         override def qname = qn

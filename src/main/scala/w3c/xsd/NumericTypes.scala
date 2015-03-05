@@ -11,7 +11,7 @@ import w3c.typeclass.>:~>
  */
 trait NumericTypes {
 
-  self : BuiltInPrimitives =>
+  self : SpecialAndPrimitiveTypes =>
 
   type integer
 
@@ -32,7 +32,7 @@ trait NumericTypes {
 
 }
 
-trait NumericTypesHierarchy[xsd <: XsdAnyType with BuiltInPrimitives with NumericTypes] {
+trait NumericTypesHierarchy[xsd <: SpecialAndPrimitiveTypes with NumericTypes] {
 
   self: BuiltInPrimitivesHierarchy[xsd] =>
 

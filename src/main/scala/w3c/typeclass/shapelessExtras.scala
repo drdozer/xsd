@@ -90,25 +90,25 @@ object AllImplicitly {
 
 }
 
-trait AllExist[L <: HList] {
+trait AllExists[L <: HList] {
   val out: L
 }
 
-object AllExist {
-  def apply[L <: HList](implicit all: AllExist[L]): AllExist[L] = all
+object AllExists {
+  def apply[L <: HList](implicit all: AllExists[L]): AllExists[L] = all
 
-  implicit def allHNil: AllExist[HNil] = new AllExist[HNil] {
+  implicit def allHNil: AllExists[HNil] = new AllExists[HNil] {
     override val out: HNil = HNil
   }
 
-  implicit def allHCons[H, T <: HList](implicit h: H, allTail: AllExist[T]): AllExist[H :: T] =
-    new AllExist[H :: T] {
+  implicit def allHCons[H, T <: HList](implicit h: H, allTail: AllExists[T]): AllExists[H :: T] =
+    new AllExists[H :: T] {
       override val out: H :: T = h :: allTail.out
     }
 
   implicit def allT[T, R <: HList](implicit
                                    generic: Generic.Aux[T, R],
-                                   all: AllExist[R]): AllExist[R] = all
+                                   all: AllExists[R]): AllExists[R] = all
 }
 
 trait SomeExists[C <: Coproduct] {

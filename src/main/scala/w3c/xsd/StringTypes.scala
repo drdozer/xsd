@@ -8,7 +8,7 @@ import w3c.typeclass.>:~>
 
 trait StringTypes {
 
-  self : BuiltInPrimitives =>
+  self : SpecialAndPrimitiveTypes =>
 
   type normalizedString
   type token
@@ -24,7 +24,7 @@ trait StringTypes {
 
 }
 
-@typeclass trait StringTypesHierarchy[xsd <: XsdAnyType with BuiltInPrimitives with StringTypes] {
+@typeclass trait StringTypesHierarchy[xsd <: SpecialAndPrimitiveTypes with StringTypes] {
 
   self: BuiltInPrimitivesHierarchy[xsd] =>
 

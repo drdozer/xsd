@@ -25,18 +25,27 @@ sealed trait Datatype[DT]
  *
  * See: http://www.w3.org/TR/xmlschema-2/#atomic
  */
-trait AtomicDatatype[DT] extends Datatype[DT]
+trait AtomicDatatype[DT] extends Primitive[DT]
 
 
+// Special, primitive and derived datatypes are disjoint and covering.
+sealed trait DatatypeType[DT]
 
-// Primitive and derived datatypes are disjoint and covering. Every datatype is either primitive or derived.
+/**
+ * A special (ur-) type.
+ */
+sealed trait Special[DT] extends DatatypeType[DT]
+
+object Special {
+  def witness[DT]: Special[DT] = new Special[DT] {}
+}
 
 /**
  * Witness that the datatype `DT` is a primitive type.
  *
  * See: http://www.w3.org/TR/xmlschema-2/#primitive-vs-derived
  */
-trait Primitive[DT]
+trait Primitive[DT] extends DatatypeType[DT]
 
 
 /**
@@ -44,8 +53,17 @@ trait Primitive[DT]
  *
  * See: http://www.w3.org/TR/xmlschema-2/#primitive-vs-derived
  */
-trait Derived[DT]
+trait Derived[DT] extends DatatypeType[DT]
 
+
+sealed trait BuiltIn[DT] extends DatatypeType[DT]
+
+object BuiltIn {
+  implicit def specialIsBuiltIn[DT : Special]: BuiltIn[DT] = new BuiltIn[DT] {}
+  implicit def primitiveIsBuiltIn[DT : Primitive] : BuiltIn[DT] =  new BuiltIn[DT] {}
+}
+
+trait UserDefined[DT] extends DatatypeType[DT]
 
 /**
  * Witness that `L` is a list type, with elements of type `E`
@@ -74,31 +92,6 @@ object ListDatatype {
 
 }
 
-// List facets:
-//·length·
-//·maxLength·
-//·minLength·
-//·enumeration·
-//·pattern·
-//·whiteSpace·
-
-
-
-/**
- * Witness that a datatype can be a member of a union datatype.
- *
- * A datatype can be a type within a union if it is either atomic or a list.
- *
- * See: http://www.w3.org/TR/xmlschema-2/#union-datatypes
- *
- * @tparam UT  the type that can be within a union
- */
-trait Unionable[UT]
-
-object Unionable {
-  implicit def atomicIsUninoable[A : AtomicDatatype]: Unionable[A] = new Unionable[A] {}
-  implicit def listIsUnionable[L : ListDatatype]: Unionable[L] = new Unionable[L] {}
-}
 
 /**
  * Witness that `U` is a union datatype, with elements of the types in the coproduct `Ts`.
@@ -117,6 +110,11 @@ trait UnionDatatype[U] extends Derived[U] {
 
 object UnionDatatype {
 
+  /**
+   * A datatype can be a type within a union if it is either atomic or a list.
+   *
+   * See: http://www.w3.org/TR/xmlschema-2/#union-datatypes
+   */
   type Unionable[UT] = SomeExists[AtomicDatatype[UT] :+: ListDatatype[UT] :+: CNil]
 
 
@@ -138,7 +136,7 @@ object UnionDatatype {
  *
  * @tparam R
  */
-trait Restricted[R] extends Datatype[R] {
+trait Restricted[R] extends Derived[R] {
   /**
    * The type that this restriction is based on.
    */

@@ -2,7 +2,7 @@ package w3c.xsd
 
 import shapeless._
 import simulacrum.{op, typeclass}
-import w3c.typeclass.{AllExist, Caster, SomeExists}
+import w3c.typeclass.{AllExists, Caster, SomeExists}
 
 /**
  * The xsd fundamental facets.
@@ -42,7 +42,7 @@ trait Facets {
 
 }
 
-trait FacetTypeclasses[ff <: Facets, xs <: XsdAnyType with XsdBuiltIn] {
+trait FacetTypeclasses[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTypes] {
 
   /**
    * All xsd types, except the ur-types, have a base type.
@@ -181,7 +181,7 @@ trait FacetTypeclasses[ff <: Facets, xs <: XsdAnyType with XsdBuiltIn] {
        (FacetApplication[ff#length, DT] :+:
                 FacetApplication[ff#maxLength, DT] :+:
                 FacetApplication[ff#totalDigits, DT] :+: CNil) :+:
-         (AllExist[
+         (AllExists[
            SomeExists[FacetApplication[ff#minInclusive, DT] :+: FacetApplication[ff#minExclusive, DT] :+: CNil] ::
              SomeExists[FacetApplication[ff#maxInclusive, DT] :+: FacetApplication[ff#maxExclusive, DT] :+: CNil] ::
              SomeExists[FacetApplication[ff#fractionDigits, DT] :+: ops.coproduct.Selector[
@@ -251,7 +251,7 @@ trait FacetTypeclasses[ff <: Facets, xs <: XsdAnyType with XsdBuiltIn] {
 
 }
 
-trait FactesProvider[ff <: Facets, xs <: XsdAnyType with XsdBuiltIn] {
+trait FactesProvider[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTypes] {
   protected implicit val facetTypeclasses: FacetTypeclasses[ff, xs]
   protected val valueSpace: ValueSpace[xs]
 

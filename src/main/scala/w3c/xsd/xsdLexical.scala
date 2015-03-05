@@ -22,20 +22,50 @@ import FailureTree._
  *
  * @author Matthew Pocock
  */
-@typeclass trait LexicalSpace[DT] {
+@typeclass trait LexicalMapping[DT] {
   def render(dt: DT): String
   def parse(s: String): Validation[FailureTree, DT]
 
-  // laws:
-  // parse(render(dt)) === dt # data round-trips to the lexical scope
-  // parse(render(parse(s))) = parse(s) # lexicals are equivalent through their associated value
+  trait LexicalMappingLaw[xs <: SpecialAndPrimitiveTypes] {
+    protected val valueSpace: ValueSpace[xs]
+    protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs]
+
+    import valueSpace._
+    import saptd._
+
+    def parseRenderSucceedEqual(dt: DT)(eq: Equality[DT]): Boolean =
+      parse(render(dt)).fold(
+        f => false,   // should not fail
+        s => eq.equal(s, dt) == boolean_true) // should be equal to the input
+
+    def parseRenderParseRenderIdentity(dt: DT)(idt: Identity[DT]): Boolean = {
+      val pr = parse(render(dt))
+      val prpr = pr flatMap (x => parse(render(x)))
+
+      pr.fold(
+        f => false, // should not fail the first time
+        prS => prpr.fold(
+          f => false, // should not fail the second time
+          prprS => idt.identical(prS, prprS) == boolean_true
+        )
+      )
+    }
+  }
+
+  def lexicalMapplingLaw[xs <: SpecialAndPrimitiveTypes](implicit
+                                                         _valueSpace: ValueSpace[xs],
+                                                         _saptd: SpecialAndPrimitiveTypesDeclarations[xs]) =
+    new LexicalMappingLaw[xs] {
+      override protected val valueSpace: ValueSpace[xs] = _valueSpace
+      override protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs] = _saptd
+    }
 }
 
-object LexicalSpace {
+object LexicalMapping {
 
   implicit class LexicalSyntax(val _s: String) extends AnyVal {
-    def ^[DT](implicit syntax: LexicalSpace[DT]): Validation[FailureTree, DT] = syntax.parse(_s)
-    def ^^[DT](implicit syntax: LexicalSpace[DT]): DT = ^(syntax).fold(
+    def ^[DT](implicit syntax: LexicalMapping[DT]): Validation[FailureTree, DT] = syntax.parse(_s)
+    def ^^[DT](implicit syntax: LexicalMapping[DT]): DT = ^(syntax).fold(
       f => throw new IllegalStateException(s"Failed to parse ${_s} with the lexical space ${syntax}: " + f),
       dt => dt
     )
@@ -44,7 +74,7 @@ object LexicalSpace {
 
 }
 
-trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
+trait WithLexicalSpace[xs <: SpecialAndPrimitiveTypes] {
 
   protected val namedTypes: NamedTypes[xs]
   import namedTypes._
@@ -58,7 +88,7 @@ trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
    lhq: HasQName[L],
    ehq: HasQName[E],
    listOf: ListDatatype.Aux[L, E],
-   eLex: LexicalSpace[E]): LexicalSpace[L] = new LexicalSpace[L] {
+   eLex: LexicalMapping[E]): LexicalMapping[L] = new LexicalMapping[L] {
     // render a list by rendering the elements, separated by a string
     override def render(dt: L) = listOf.elements(dt).map(eLex render _).mkString(" ")
 
@@ -78,13 +108,13 @@ trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
   }
 
   type fx[T] = T => String
-  object toRender extends (LexicalSpace ~> fx) {
-    def apply[DT](ls: LexicalSpace[DT]): DT => String = (dt: DT) => ls.render(dt)
+  object toRender extends (LexicalMapping ~> fx) {
+    def apply[DT](ls: LexicalMapping[DT]): DT => String = (dt: DT) => ls.render(dt)
   }
 
   type ft[X] = String => Validation[FailureTree, X]
-  object toParse extends (LexicalSpace ~> ft) {
-    def apply[DT](ls: LexicalSpace[DT]): String => Validation[FailureTree, DT] = (s: String) => ls.parse(s)
+  object toParse extends (LexicalMapping ~> ft) {
+    def apply[DT](ls: LexicalMapping[DT]): String => Validation[FailureTree, DT] = (s: String) => ls.parse(s)
   }
 
   object mergeResults extends Poly {
@@ -101,7 +131,7 @@ trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
   ParseFs <: HList, Strings <: HList, Parseds <: HList]
   (implicit
    unionDatatype: UnionDatatype.Aux[U, Ts],
-   lexicalSpaces: AllImplicitly.Aux[LexicalSpace, Ts, Is],
+   lexicalSpaces: AllImplicitly.Aux[LexicalMapping, Ts, Is],
    renderMapper: hlist.Mapper.Aux[toRender.type, Is, RendFs],
    zipRenderers: w3c.typeclass.ZipApply.Aux[RendFs, Ts, As],
    foldOutString: coproduct.Folder.Aux[PolyDefns.identity.type, As, String],
@@ -109,8 +139,8 @@ trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
    constMapper: hlist.ConstMapper.Aux[String, ParseFs, Strings],
    zipParsers: shapeless.ops.hlist.ZipApply.Aux[ParseFs, Strings, Parseds],
    foldOutParseResult: hlist.RightFolder.Aux[
-     Parseds, ValidationNel[FailureTree, CNil], mergeResults.type, Validation[FailureTree, Ts]]): LexicalSpace[U] =
-    new LexicalSpace[U]
+     Parseds, ValidationNel[FailureTree, CNil], mergeResults.type, Validation[FailureTree, Ts]]): LexicalMapping[U] =
+    new LexicalMapping[U]
     {
       override def render(dt: U) = {
         val renderers = renderMapper(lexicalSpaces.out)
@@ -132,8 +162,8 @@ trait WithLexicalSpace[xs <: XsdAnyType with XsdBuiltIn] {
   R, BO]
   (implicit
    restricted: Restricted.AuxBO[R, BO],
-   lexicalSpaceBO: LexicalSpace[BO],
-   caster: Caster.Aux[BO, R]): LexicalSpace[R] = new LexicalSpace[R] {
+   lexicalSpaceBO: LexicalMapping[BO],
+   caster: Caster.Aux[BO, R]): LexicalMapping[R] = new LexicalMapping[R] {
     override def render(dt: R) = lexicalSpaceBO.render(caster.upcast(dt))
 
     override def parse(s: String) = lexicalSpaceBO.parse(s) flatMap caster.downcast
