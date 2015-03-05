@@ -61,29 +61,45 @@ import FailureTree._
     }
 }
 
-object LexicalMapping {
+trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
 
-  implicit class LexicalSyntax(val _s: String) extends AnyVal {
+  /**
+   * A type has a qname associated with it.
+   */
+  @typeclass trait HasQName[T] {
+    def qname: xs#QName
+  }
+
+  object HasQName {
+    def apply[T](qname: String)(implicit
+                                qnameLexicalMapping: LexicalMapping[xs#QName],
+                                qnameHasQName: HasQName[xs#QName]): HasQName[T] =
+    {
+      val qn = qname.^^[xs#QName]
+      new HasQName[T] {
+        override def qname = qn
+      }
+    }
+  }
+
+  /**
+   * Summon the qname for a type.
+   */
+  def qnameOf[T](implicit hq: HasQName[T]): xs#QName = hq.qname
+
+  implicit class LexicalMappingSyntax(_s: String) {
     def ^[DT](implicit syntax: LexicalMapping[DT]): Validation[FailureTree, DT] = syntax.parse(_s)
-    def ^^[DT](implicit syntax: LexicalMapping[DT]): DT = ^(syntax).fold(
-      f => throw new IllegalStateException(s"Failed to parse ${_s} with the lexical space ${syntax}: " + f),
+    def ^^[DT](implicit syntax: LexicalMapping[DT], hasQName: HasQName[DT]): DT = ^(syntax).fold(
+      f => throw new IllegalStateException(s"Failed to parse ${_s} with the lexical space for ${qnameOf[DT]}: " + f),
       dt => dt
     )
   }
 
 
-}
-
-trait WithLexicalSpace[xs <: SpecialAndPrimitiveTypes] {
-
-  protected val namedTypes: NamedTypes[xs]
-  import namedTypes._
-
-
   /**
    * A lexical space that represents space-separated values from the underlying list element's lexical space.
    */
-  def listLexicalSpace[L, E]
+  def listLexicalMapping[L, E]
   (implicit
    lhq: HasQName[L],
    ehq: HasQName[E],
@@ -125,7 +141,7 @@ trait WithLexicalSpace[xs <: SpecialAndPrimitiveTypes] {
   /**
    * A lexical space that represents the union of some memberTypes.
    */
-  def unionLexicalSpace[
+  def unionLexicalMapping[
   U, Ts <: Coproduct, Is <: HList,
   RendFs <: HList, As <: Coproduct,
   ParseFs <: HList, Strings <: HList, Parseds <: HList]
@@ -158,7 +174,7 @@ trait WithLexicalSpace[xs <: SpecialAndPrimitiveTypes] {
       }
     }
 
-  def restrictionLexicalSpace[
+  def restrictionLexicalMapping[
   R, BO]
   (implicit
    restricted: Restricted.AuxBO[R, BO],

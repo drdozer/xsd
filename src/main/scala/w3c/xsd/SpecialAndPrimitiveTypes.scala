@@ -73,18 +73,10 @@ trait BuiltInPrimitivesHierarchy[xs <: SpecialAndPrimitiveTypes] {
 
 }
 
-/**
- * Witness trait for type declarations.
- *
- * This provides all the witnesses to demonstrate that a type is correctly and fully described.
- */
-trait Declarations[xs <: SpecialAndPrimitiveTypes] {
+trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
 
-  protected val namedTypes: NamedTypes[xs]
-  protected val valueSpace: ValueSpace[xs]
+  self : LexicalSpace[xs] with ValueSpace[xs] =>
 
-  import namedTypes._
-  import valueSpace._
 
   type datatypeWitness[DT] = SomeExists[Special[DT] :+: Primitive[DT] :+: Derived[DT] :+: CNil]
   type datastructureWitness[DT] = SomeExists[AtomicDatatype[DT] :+: ListDatatype[DT] :+: UnionDatatype[DT] :+: CNil]
@@ -99,48 +91,92 @@ trait Declarations[xs <: SpecialAndPrimitiveTypes] {
 
 
 
-}
-
-trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] extends Declarations[xs] {
-
-  protected val namedTypes: NamedTypes[xs]
-  import namedTypes._
-  import LexicalMapping._
-
   val boolean_true: xs#boolean = "true".^^[xs#boolean]
   val boolean_false: xs#boolean = "false".^^[xs#boolean]
 
 
-  implicit def anyTypeHasQName: HasQName[xs#anyType] = HasQName("xs:anyType")
-  implicit def anyTypeIsSpecial: Special[xs#anyType] = Special.witness[xs#anyType]
+  implicit val anyTypeHasQName: HasQName[xs#anyType] = HasQName("xs:anyType")
+  implicit def anyTypeLexicalMapping: LexicalMapping[xs#anyType]
+  implicit val anyTypeIsSpecial: Special[xs#anyType] = Special.witness[xs#anyType]
 
-  implicit def anySimpleTypeHasQName: HasQName[xs#anySimpleType] = HasQName("xs:anySimpleType")
-  implicit def anySimpleTypeIsSpecial: Special[xs#anySimpleType] = Special.witness[xs#anySimpleType]
+  implicit val anySimpleTypeHasQName: HasQName[xs#anySimpleType] = HasQName("xs:anySimpleType")
+  implicit def anySimpleTypeLexicalMapping: LexicalMapping[xs#anySimpleType]
+  implicit val anySimpleTypeIsSpecial: Special[xs#anySimpleType] = Special.witness[xs#anySimpleType]
 
 
-  implicit def stringHasQName: HasQName[xs#string] = HasQName("xs:string")
-  implicit def stringLexicalSpace: LexicalMapping[xs#string]
+  implicit val stringHasQName: HasQName[xs#string] = HasQName("xs:string")
+  implicit def stringLexicalMapping: LexicalMapping[xs#string]
   implicit def stringIsPrimitive: Primitive[xs#string]
 
+  implicit val durationHasQName: HasQName[xs#duration] = HasQName("xs:duration")
+  implicit def durationLexicalMapping: LexicalMapping[xs#duration]
   implicit def durationIsPrimitive: Primitive[xs#duration]
+
+  implicit val dateTimeHasQName: HasQName[xs#dateTime] = HasQName("xs:dateTime")
+  implicit def dateTimeLexicalMapping: LexicalMapping[xs#dateTime]
   implicit def dateTimeIsPrimitive: Primitive[xs#dateTime]
+
+  implicit val timeHasQName: HasQName[xs#time] = HasQName("xs:time")
+  implicit def timeLexicalMapping: LexicalMapping[xs#time]
   implicit def timeIsPrimitive: Primitive[xs#dateTime]
+
+  implicit val dateHasQName: HasQName[xs#date] = HasQName("xs:date")
+  implicit def dateLexicalMapping: LexicalMapping[xs#date]
   implicit def dateIsPrimitive: Primitive[xs#date]
+
+  implicit val gYearMonthHasQName: HasQName[xs#gYearMonth] = HasQName("xs:gYearMonth")
+  implicit def gYearMonthLexicalMapping: LexicalMapping[xs#gYearMonth]
   implicit def gYearMonthIsPrimitive: Primitive[xs#gYearMonth]
+
+  implicit val gYearHasQName: HasQName[xs#gYear] = HasQName("xs:gYear")
+  implicit def gYearLexicalMapping: LexicalMapping[xs#gYear]
   implicit def gYearIsPrimitive: Primitive[xs#gYear]
+
+  implicit val gMonthDayHasQName: HasQName[xs#gMonthDay] = HasQName("xs:gMonthDay")
+  implicit def gMonthDayLexicalMapping: LexicalMapping[xs#gMonthDay]
   implicit def gMonthDayIsPrimitive: Primitive[xs#gMonthDay]
+
+  implicit val gDayHasQName: HasQName[xs#gDay] = HasQName("xs:gDay")
+  implicit def gDayLexicalMapping: LexicalMapping[xs#gDay]
   implicit def gDayIsPrimitive: Primitive[xs#gDay]
+
+  implicit val gMonthHasQName: HasQName[xs#gMonth] = HasQName("xs:gMonth")
+  implicit def gMonthLexicalMapping: LexicalMapping[xs#gMonth]
   implicit def gMonthIsPrimitive: Primitive[xs#gMonth]
 
+  implicit val booleanHasQName: HasQName[xs#boolean] = HasQName("xs:boolean")
   implicit def booleanLexicalMapping: LexicalMapping[xs#boolean]
   implicit def booleanIsPrimitive: Primitive[xs#boolean]
 
+  implicit val base64BinaryHasQName: HasQName[xs#base64Binary] = HasQName("xs:base64Binary")
+  implicit def base64LexicalMapping: LexicalMapping[xs#base64Binary]
   implicit def base64BinaryIsPrimitive: Primitive[xs#base64Binary]
+
+  implicit val hexBinaryHasQName: HasQName[xs#hexBinary] = HasQName("xs:hexBinary")
+  implicit def hexBinaryLexicalMapping: LexicalMapping[xs#hexBinary]
   implicit def hexBinaryIsPrimitive: Primitive[xs#hexBinary]
+
+  implicit val floatHasQName: HasQName[xs#float] = HasQName("xs:float")
+  implicit def floatLexicalMapping: LexicalMapping[xs#float]
   implicit def floatIsPrimitive: Primitive[xs#float]
+
+  implicit val decimalHasQName: HasQName[xs#decimal] = HasQName("xs:decimal")
+  implicit def decimalLexicalMapping: LexicalMapping[xs#decimal]
   implicit def decimalIsPrimitive: Primitive[xs#decimal]
+
+  implicit val doubleHasQName: HasQName[xs#double] = HasQName("xs:double")
+  implicit def doubleLexicalMapping: LexicalMapping[xs#double]
   implicit def doubleIsPrimitive: Primitive[xs#double]
+
+  implicit val anyURIHasQName: HasQName[xs#anyURI] = HasQName("xs:anyURI")
+  implicit def anyURILexicalMapping: LexicalMapping[xs#anyURI]
   implicit def anyURIIsPrimitive: Primitive[xs#anyURI]
+
+  implicit val QNameHasQName: HasQName[xs#QName] = HasQName("xs:QName")
+  implicit def QNameLexicalMapping: LexicalMapping[xs#QName]
   implicit def QNameIsPrimitive: Primitive[xs#QName]
+
+  implicit val NOTATIONHasQName: HasQName[xs#NOTATION] = HasQName("xs:NOTATION")
+  implicit def NOTATIONLexicalMapping: LexicalMapping[xs#NOTATION]
   implicit def NOTATIONIsPrimitive: Primitive[xs#NOTATION]
 }
