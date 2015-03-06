@@ -1,7 +1,7 @@
 package w3c.xsd
 
 import shapeless._
-import w3c.typeclass.{SomeExists, AllImplicitly}
+import w3c.typeclass.{SomeExists, AllImplicitly, Caster}
 
 // a Datatype is: Atomic | List | Union
 // a Datatype is: Primitive | Derived

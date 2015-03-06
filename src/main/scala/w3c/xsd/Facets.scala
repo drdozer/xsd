@@ -293,7 +293,7 @@ trait FactesProvider[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTy
    */
   type OrderedFacet = FundamentalFacet[ff#ordered] {
     type FA[DT] <: FacetApplication[ff#ordered, DT] {
-      type requires = SomeExists[PartiallyOrdered[DT] :+: FullyOrdered[DT] :+: CNil]
+      type requires = SomeExists[PartiallyOrdered[DT, DT] :+: FullyOrdered[DT, DT] :+: CNil]
     }
   }
 
@@ -395,7 +395,7 @@ trait FactesProvider[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTy
   implicit def validateMinLength[DT](restriction: RestrictionApplication.Aux[ff#minLength, DT, xs#nonNegativeInteger])
                                     (implicit
                                      hasLength: HasLength[DT],
-                                     ordered: Ordered[xs#nonNegativeInteger]): FacetValidator[DT] =
+                                     ordered: Ordered[xs#nonNegativeInteger, xs#nonNegativeInteger]): FacetValidator[DT] =
     new FacetValidator[DT] {
       override def isValid(dt: DT): xs#boolean = ordered.lt(
         hasLength.length(dt),

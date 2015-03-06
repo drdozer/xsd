@@ -146,8 +146,9 @@ trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
   implicit def booleanLexicalMapping: LexicalMapping[xs#boolean]
   implicit def booleanIsPrimitive: Primitive[xs#boolean]
   implicit def booleanValueSpace: BooleanValueSpace[xs#boolean] = new BooleanValueSpace[xs#boolean] {
-    val trueValue: xs#boolean  = "true".^^[xs#boolean]
-    val falseValue: xs#boolean = "false".^^[xs#boolean]
+    override val trueValue: xs#boolean  = "true".^^[xs#boolean]
+    override val falseValue: xs#boolean = "false".^^[xs#boolean]
+    override def booleanFrom(b: Boolean) = if(b) trueValue else falseValue
   }
 
   implicit val base64BinaryHasQName: HasQName[xs#base64Binary] = HasQName("xs:base64Binary")

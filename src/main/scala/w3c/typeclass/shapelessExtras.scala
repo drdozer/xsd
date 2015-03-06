@@ -163,7 +163,9 @@ object OneExists {
       val out = Inl(h)
     }
 
-  implicit def oneInr[H, Tl <: Coproduct](implicit oneTl: OneExists[Tl]): OneExists[H :+: Tl] =
+  implicit def oneInr[H, Tl <: Coproduct](implicit
+                                          noH: DoesNotExist[H],
+                                          oneTl: OneExists[Tl]): OneExists[H :+: Tl] =
     new OneExists[H :+: Tl] {
       val out = Inr(oneTl.out)
     }

@@ -26,7 +26,7 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
     protected def booleanValueSpace: BooleanValueSpace[xs#boolean]
 
     def identical(lhs: T1, rhs: T2): xs#boolean
-    def distinct(lhs: T1, rhs: T2): xs#boolean = booleanValueSpace.!(identical(lhs, rhs))
+    def distinct(lhs: T1, rhs: T2): xs#boolean = booleanValueSpace.not(identical(lhs, rhs))
 
     trait IdentityLaw {
       def identityIsSymmetric(lhs: T1, rhs: T2)(implicit
@@ -154,7 +154,7 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
     protected def booleanValueSpace: BooleanValueSpace[xs#boolean]
 
     @op("===") def equal(lhs: T1, rhs: T2): xs#boolean
-    @op("≠") def notEqual(lhs: T1, rhs: T2): xs#boolean = booleanValueSpace.!(equal(lhs, rhs))
+    @op("≠") def notEqual(lhs: T1, rhs: T2): xs#boolean = booleanValueSpace.not(equal(lhs, rhs))
 
     trait EqualityLaw {
       def equalityIsSymmetric(lhs: T1, rhs: T2)(implicit
@@ -207,10 +207,10 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
      _booleanValueSpace: BooleanValueSpace[xs#boolean],
      t2IsRestriction: Restricted.AuxBO[T2, BO],
      eqBOT1: Equality[T1, BO],
-     t1BOCaster: Caster.Aux[BO, T2]): Equality[T1, T2] =
+     t2BOCaster: Caster.Aux[BO, T2]): Equality[T1, T2] =
       new Equality[T1, T2] {
         override protected def booleanValueSpace = _booleanValueSpace
-        override def equal(lhs: T1, rhs: T2) = eqBOT1.equal(lhs, t1BOCaster.upcast(rhs))
+        override def equal(lhs: T1, rhs: T2) = eqBOT1.equal(lhs, t2BOCaster.upcast(rhs))
       }
 
     /**
@@ -265,31 +265,181 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
   /**
    * Witness that a type is Ordered. Ordered types will be either Partially or fully ordered.
    *
-   * See: http://www.w3.org/TR/xmlschema-2/#rf-ordered
+   * See: http://www.w3.org/TR/xmlschema11-2/#order
    */
-  trait Ordered[T] extends Equality[T, T] {
-    @op("<") def lt(lhs: T, rhs: T): xs#boolean
-    @op("≤") def lteq(lhs: T, rhs: T): xs#boolean
-    @op(">") def gt(lhs: T, rhs: T): xs#boolean
-    @op("≥") def gteq(lhs: T, rhs: T): xs#boolean
+  sealed trait Ordered[T1, T2] {
+    protected def equality: Equality[T1, T2]
+    protected implicit def booleanValueSpace: BooleanValueSpace[xs#boolean]
+    import BooleanValueSpace.ops._
+
+    @op("<") def lt(lhs: T1, rhs: T2): xs#boolean
+    @op("≤") def lteq(lhs: T1, rhs: T2): xs#boolean = lt(lhs, rhs) ∨ equality.equal(lhs, rhs)
+    @op(">") def gt(lhs: T1, rhs: T2): xs#boolean
+    @op("≥") def gteq(lhs: T1, rhs: T2): xs#boolean = gt(lhs, rhs) ∨ equality.equal(lhs, rhs)
+
+    trait OrderedLaw {
+      def ltGtSymmetry(lhs: T1, rhs: T2)(implicit ord21: Ordered[T2, T1]): Boolean =
+        lt(lhs, rhs) == ord21.gt(rhs, lhs)
+
+      def lteqGteqSymmetry(lhs: T1, rhs: T2)(implicit ord21: Ordered[T2, T1]): Boolean =
+              lteq(lhs, rhs) == ord21.gteq(rhs, lhs)
+
+      def gtLtSymmetry(lhs: T1, rhs: T2)(implicit ord21: Ordered[T2, T1]): Boolean =
+        gt(lhs, rhs) == ord21.lt(rhs, lhs)
+
+      def gteqLteqSymmetry(lhs: T1, rhs: T2)(implicit ord21: Ordered[T2, T1]): Boolean =
+              gteq(lhs, rhs) == ord21.lteq(rhs, lhs)
+
+      def ltNotEqNotGt(lhs: T1, rhs: T2): Boolean =
+        booleanValueSpace.booleanOf(lt(lhs, rhs) xor equality.equal(lhs, rhs) xor gt(lhs, rhs))
+    }
+
+    def orderedLaw: OrderedLaw = new OrderedLaw {}
   }
 
   /**
    * Witness that a type is partially ordered.
    */
-  trait PartiallyOrdered[T] extends Ordered[T] {
-    @op("<>") def incomparable(lhs: T, rhs: T): xs#boolean
+  trait PartiallyOrdered[T1, T2] extends Ordered[T1, T2] {
+    @op("<>") def incomparable(lhs: T1, rhs: T2): xs#boolean
+
+    trait PartiallyOrderedLaw extends OrderedLaw {
+      def incomparableImpliesNotEqual(lhs: T1, rhs: T2): Boolean =
+        if(incomparable(lhs, rhs) == booleanValueSpace.trueValue)
+          equality.notEqual(lhs, rhs) == booleanValueSpace.trueValue
+        else
+          true
+    }
+  }
+
+  object PartiallyOrdered {
+
+    /**
+     * Comparing things of different primitive types always gives incomparable.
+     *
+     * <blockquote>
+     * In the order relations defined in this specification, values from different value spaces are ·incomparable·.
+     * </blockquote>
+     */
+    implicit def differentPrimitivesAreIncomparable[T1, T2]
+    (implicit
+     _equality: Equality[T1, T2],
+     _booleanSpace: BooleanValueSpace[xs#boolean],
+     t1IsPrimitive: Primitive[T1],
+     t2IsPrimitive: Primitive[T2],
+     t1t2AreDifferent: DoesNotExist[T1 =:= T2]): PartiallyOrdered[T1, T2] =
+      new PartiallyOrdered[T1, T2] {
+
+        override protected def equality = _equality
+        override protected implicit def booleanValueSpace = _booleanSpace
+
+        override def incomparable(lhs: T1, rhs: T2) = booleanValueSpace.trueValue
+        override def gt(lhs: T1, rhs: T2) = booleanValueSpace.falseValue
+        override def lt(lhs: T1, rhs: T2) = booleanValueSpace.falseValue
+      }
+
+    /**
+     * Restricted types use the partial ordering of their base type: LHS.
+     */
+    implicit def restrictedArePartiallyOrderedByBaseT1[T1, T2, BO]
+    (implicit
+     _equality: Equality[T1, T2],
+     _booleanValueSpace: BooleanValueSpace[xs#boolean],
+     t1IsRestriction: Restricted.AuxBO[T1, BO],
+     ord: PartiallyOrdered[BO, T2],
+     t1BOCaster: Caster.Aux[BO, T1]): PartiallyOrdered[T1, T2] =
+      new PartiallyOrdered[T1, T2] {
+        override protected def equality = _equality
+        override protected def booleanValueSpace = _booleanValueSpace
+
+        override def incomparable(lhs: T1, rhs: T2) = ord.incomparable(t1BOCaster.upcast(lhs), rhs) 
+        override def gt(lhs: T1, rhs: T2) = ord.gt(t1BOCaster.upcast(lhs), rhs)
+        override def lt(lhs: T1, rhs: T2) = ord.lt(t1BOCaster.upcast(lhs), rhs)
+      }
+
+    /**
+     * Restricted types use the partial ordering of their base type: RHS.
+     */
+    implicit def restrictedArePartiallyOrderedByBaseT2[T1, T2, BO]
+    (implicit
+     _equality: Equality[T1, T2],
+     _booleanValueSpace: BooleanValueSpace[xs#boolean],
+     t2IsRestriction: Restricted.AuxBO[T2, BO],
+     ord: PartiallyOrdered[T1, BO],
+     t2BOCaster: Caster.Aux[BO, T2]): PartiallyOrdered[T1, T2] =
+      new PartiallyOrdered[T1, T2] {
+        override protected def equality = _equality
+        override protected def booleanValueSpace = _booleanValueSpace
+
+        override def incomparable(lhs: T1, rhs: T2) = ord.incomparable(lhs, t2BOCaster.upcast(rhs))
+        override def gt(lhs: T1, rhs: T2) = ord.gt(lhs, t2BOCaster.upcast(rhs))
+        override def lt(lhs: T1, rhs: T2) = ord.lt(lhs, t2BOCaster.upcast(rhs))
+      }
+
   }
 
   /**
    * Witness that a type is fully ordered.
    */
-  trait FullyOrdered[T] extends Ordered[T]
+  trait FullyOrdered[T1, T2] extends Ordered[T1, T2]
+
+  object FullyOrdered {
+
+    /**
+     * Restricted types use the full ordering of their base type: LHS.
+     */
+    implicit def restrictedAreFullyOrderedByBaseT1[T1, T2, BO]
+    (implicit
+     _equality: Equality[T1, T2],
+     _booleanValueSpace: BooleanValueSpace[xs#boolean],
+     t1IsRestriction: Restricted.AuxBO[T1, BO],
+     ord: FullyOrdered[BO, T2],
+     t1BOCaster: Caster.Aux[BO, T1]): FullyOrdered[T1, T2] =
+      new FullyOrdered[T1, T2] {
+        override protected def equality = _equality
+        override protected def booleanValueSpace = _booleanValueSpace
+
+        override def gt(lhs: T1, rhs: T2) = ord.gt(t1BOCaster.upcast(lhs), rhs)
+        override def lt(lhs: T1, rhs: T2) = ord.lt(t1BOCaster.upcast(lhs), rhs)
+      }
+
+    /**
+     * Restricted types use the full ordering of their base type: RHS.
+     */
+    implicit def restrictedAreFullyOrderedByBaseT2[T1, T2, BO]
+    (implicit
+     _equality: Equality[T1, T2],
+     _booleanValueSpace: BooleanValueSpace[xs#boolean],
+     t2IsRestriction: Restricted.AuxBO[T2, BO],
+     ord: FullyOrdered[T1, BO],
+     t2BOCaster: Caster.Aux[BO, T2]): FullyOrdered[T1, T2] =
+      new FullyOrdered[T1, T2] {
+        override protected def equality = _equality
+        override protected def booleanValueSpace = _booleanValueSpace
+
+        override def gt(lhs: T1, rhs: T2) = ord.gt(lhs, t2BOCaster.upcast(rhs))
+        override def lt(lhs: T1, rhs: T2) = ord.lt(lhs, t2BOCaster.upcast(rhs))
+      }
+  }
 
   @typeclass trait BooleanValueSpace[B] {
     def trueValue: B
     def falseValue: B
+    def booleanFrom(b: Boolean): B
+    def booleanOf(b: B): Boolean = b == trueValue
 
-    def ! (b: B): B = if(b == trueValue) falseValue else trueValue
+    @op("∧") def and(lhs: B, rhs: B): B =
+      booleanFrom((lhs == trueValue) && (rhs == trueValue))
+
+    @op("∨") def or(lhs: B, rhs: B): B =
+      booleanFrom((lhs == trueValue) || (rhs == trueValue))
+
+    def xor(lhs: B, rhs: B): B =
+      booleanFrom(
+        (lhs == trueValue && rhs == falseValue) ||
+        (lhs == falseValue && rhs == trueValue))
+
+    @op("unary_!") def not(b: B): B =
+      booleanFrom(b == falseValue)
   }
 }
