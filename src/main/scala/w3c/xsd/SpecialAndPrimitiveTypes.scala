@@ -1,7 +1,7 @@
 package w3c.xsd
 
 import shapeless.{HNil, ::, Coproduct, CNil, :+:}
-import w3c.typeclass.{SomeExists, AllExists, >:~>}
+import w3c.typeclass._
 
 /**
  *
@@ -76,23 +76,21 @@ trait BuiltInPrimitivesHierarchy[xs <: SpecialAndPrimitiveTypes] {
 trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
 
   self : LexicalSpace[xs] with ValueSpace[xs] =>
-
-
-  type datatypeWitness[DT] = SomeExists[Special[DT] :+: Primitive[DT] :+: Derived[DT] :+: CNil]
-  type datastructureWitness[DT] = SomeExists[AtomicDatatype[DT] :+: ListDatatype[DT] :+: UnionDatatype[DT] :+: CNil]
-  type definitionScope[DT] = SomeExists[BuiltIn[DT] :+: UserDefined[DT] :+: CNil]
-  type typeWitness[DT] = AllExists[
-    HasQName[DT] ::
-    LexicalMapping[DT] ::
-    datatypeWitness[DT] ::
-    datastructureWitness[DT] ::
-    Identity[DT] ::
-    Equality[DT] :: HNil]
-
-
-
-  val boolean_true: xs#boolean = "true".^^[xs#boolean]
-  val boolean_false: xs#boolean = "false".^^[xs#boolean]
+//
+//  type datatypeWitness[DT] = SomeExists[
+//    Special[DT] :+:
+//      AllExists[Primitive[DT] :: Identity[DT, DT] :: HNil] :+:
+//      Derived[DT] :+:
+//      CNil]
+//
+//  type datastructureWitness[DT] = SomeExists[AtomicDatatype[DT] :+: ListDatatype[DT] :+: UnionDatatype[DT] :+: CNil]
+//  type definitionScope[DT] = SomeExists[BuiltIn[DT] :+: UserDefined[DT] :+: CNil]
+//  type typeWitness[DT] = AllExists[
+//    HasQName[DT] ::
+//    LexicalMapping[DT] ::
+//    datatypeWitness[DT] ::
+//    datastructureWitness[DT] ::
+//    Equality[DT] :: HNil]
 
 
   implicit val anyTypeHasQName: HasQName[xs#anyType] = HasQName("xs:anyType")
@@ -147,6 +145,10 @@ trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
   implicit val booleanHasQName: HasQName[xs#boolean] = HasQName("xs:boolean")
   implicit def booleanLexicalMapping: LexicalMapping[xs#boolean]
   implicit def booleanIsPrimitive: Primitive[xs#boolean]
+  implicit def booleanValueSpace: BooleanValueSpace[xs#boolean] = new BooleanValueSpace[xs#boolean] {
+    val trueValue: xs#boolean  = "true".^^[xs#boolean]
+    val falseValue: xs#boolean = "false".^^[xs#boolean]
+  }
 
   implicit val base64BinaryHasQName: HasQName[xs#base64Binary] = HasQName("xs:base64Binary")
   implicit def base64LexicalMapping: LexicalMapping[xs#base64Binary]
@@ -179,4 +181,5 @@ trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
   implicit val NOTATIONHasQName: HasQName[xs#NOTATION] = HasQName("xs:NOTATION")
   implicit def NOTATIONLexicalMapping: LexicalMapping[xs#NOTATION]
   implicit def NOTATIONIsPrimitive: Primitive[xs#NOTATION]
+
 }

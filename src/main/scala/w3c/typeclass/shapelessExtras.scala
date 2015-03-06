@@ -3,6 +3,8 @@ package w3c.typeclass
 import shapeless._
 import shapeless.ops.coproduct.ToHList
 
+import scala.annotation.implicitNotFound
+
 /**
  * Whitness that a hlist `T1::T2::T3::...` is related to an hlist [X] `(X=>T1)::(X=>T2)::(X=>T3)...`.
  *
@@ -90,6 +92,20 @@ object AllImplicitly {
 
 }
 
+@implicitNotFound("Unable to prove that an implicit for ${T} does not exist")
+trait DoesNotExist[T]
+
+object DoesNotExist extends LowPriorityDoesNotExist {
+  implicit def ambiguousPriorityDoesNotExist1[T](implicit ev: T): DoesNotExist[T] = ???
+  implicit def ambiguousPriorityDoesNotExist2[T](implicit ev: T): DoesNotExist[T] = ???
+}
+
+trait LowPriorityDoesNotExist {
+  implicit def lowPriorityDoesNotExist[T]: DoesNotExist[T] = new DoesNotExist[T] {}
+}
+
+
+@implicitNotFound("Unable to find implicit witnesses for all types in ${L}")
 trait AllExists[L <: HList] {
   val out: L
 }
@@ -111,6 +127,8 @@ object AllExists {
                                    all: AllExists[R]): AllExists[R] = all
 }
 
+
+@implicitNotFound("Unable to find an implicit witness for at least one type in ${C}")
 trait SomeExists[C <: Coproduct] {
   val out: C
 }
@@ -127,10 +145,28 @@ object SomeExists {
     new SomeExists[H :+: Tl] {
       val out = Inr(someTl.out)
     }
+}
 
-  implicit def someT[T, R <: HList, C <: Coproduct](implicit
-                                                    generic: Generic.Aux[T, R], toHList: ToHList.Aux[C, R],
-                                                    some: SomeExists[C]): SomeExists[C] = some
+
+@implicitNotFound("Unable to demonstrate that exactly one type in ${C} has an implicit witness")
+trait OneExists[C <: Coproduct] {
+  val out: C
+}
+
+object OneExists {
+  def apply[C <: Coproduct](implicit one: OneExists[C]): OneExists[C] = one
+
+  implicit def oneInl[H, Tl <: Coproduct](implicit
+                                          h: H,
+                                          noTl: DoesNotExist[OneExists[Tl]]): OneExists[H :+: Tl] =
+    new OneExists[H :+: Tl] {
+      val out = Inl(h)
+    }
+
+  implicit def oneInr[H, Tl <: Coproduct](implicit oneTl: OneExists[Tl]): OneExists[H :+: Tl] =
+    new OneExists[H :+: Tl] {
+      val out = Inr(oneTl.out)
+    }
 
 }
 

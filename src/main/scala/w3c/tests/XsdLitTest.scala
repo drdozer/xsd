@@ -2,8 +2,6 @@ package w3c.tests
 
 import w3c.typeclass.{ThrowableFailure, FailureTree}
 import w3c.xsd._
-import LexicalMapping._
-import LexicalMapping.ops._
 import scala.util.Try
 import scalaz._
 import Scalaz._

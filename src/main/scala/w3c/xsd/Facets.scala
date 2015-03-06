@@ -274,7 +274,7 @@ trait FactesProvider[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTy
    */
   type EqualFacet = FundamentalFacet[ff#equal] {
     type FA[DT] <: FacetApplication[ff#equal, DT] {
-      type requires = Equality[DT]
+      type requires = Equality[DT, DT]
     }
   }
 
@@ -368,7 +368,7 @@ trait FactesProvider[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTy
   implicit def validateLength[DT](restriction: RestrictionApplication.Aux[ff#length, DT, xs#nonNegativeInteger])
                                  (implicit
                                   hasLength: HasLength[DT],
-                                   equality: Equality[xs#nonNegativeInteger]): FacetValidator[DT] =
+                                   equality: Equality[xs#nonNegativeInteger, xs#nonNegativeInteger]): FacetValidator[DT] =
     new FacetValidator[DT] {
       def isValid(dt: DT): xs#boolean = equality.equal(
         hasLength.length(dt),

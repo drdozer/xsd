@@ -12,56 +12,56 @@ import Scalaz._
 import FailureTree._
 
 
-/**
- * A lexical space for the datatype `DT`.
- *
- * A lexical space is a subset of all strings of characters. The subset is defined by those strings for which `parse`
- * succeeds.
- *
- * see: http://www.w3.org/TR/xmlschema-2/#lexical-space
- *
- * @author Matthew Pocock
- */
-@typeclass trait LexicalMapping[DT] {
-  def render(dt: DT): String
-  def parse(s: String): Validation[FailureTree, DT]
-
-  trait LexicalMappingLaw[xs <: SpecialAndPrimitiveTypes] {
-    protected val valueSpace: ValueSpace[xs]
-    protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs]
-
-    import valueSpace._
-    import saptd._
-
-    def parseRenderSucceedEqual(dt: DT)(eq: Equality[DT]): Boolean =
-      parse(render(dt)).fold(
-        f => false,   // should not fail
-        s => eq.equal(s, dt) == boolean_true) // should be equal to the input
-
-    def parseRenderParseRenderIdentity(dt: DT)(idt: Identity[DT]): Boolean = {
-      val pr = parse(render(dt))
-      val prpr = pr flatMap (x => parse(render(x)))
-
-      pr.fold(
-        f => false, // should not fail the first time
-        prS => prpr.fold(
-          f => false, // should not fail the second time
-          prprS => idt.identical(prS, prprS) == boolean_true
-        )
-      )
-    }
-  }
-
-  def lexicalMapplingLaw[xs <: SpecialAndPrimitiveTypes](implicit
-                                                         _valueSpace: ValueSpace[xs],
-                                                         _saptd: SpecialAndPrimitiveTypesDeclarations[xs]) =
-    new LexicalMappingLaw[xs] {
-      override protected val valueSpace: ValueSpace[xs] = _valueSpace
-      override protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs] = _saptd
-    }
-}
-
 trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
+
+  /**
+   * A lexical space for the datatype `DT`.
+   *
+   * A lexical space is a subset of all strings of characters. The subset is defined by those strings for which `parse`
+   * succeeds.
+   *
+   * see: http://www.w3.org/TR/xmlschema-2/#lexical-space
+   *
+   * @author Matthew Pocock
+   */
+  @typeclass trait LexicalMapping[DT] {
+    def render(dt: DT): String
+    def parse(s: String): Validation[FailureTree, DT]
+
+    trait LexicalMappingLaw {
+      protected val valueSpace: ValueSpace[xs]
+      protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs]
+
+      import valueSpace._
+      import saptd._
+
+      def parseRenderSucceedEqual(dt: DT)(implicit eq: Equality[DT, DT]): Boolean =
+        parse(render(dt)).fold(
+          f => false,   // should not fail
+          s => eq.equal(s, dt) == booleanValueSpace.trueValue) // should be equal to the input
+
+      def parseRenderParseRenderIdentity(dt: DT)(idt: Identity[DT, DT]): Boolean = {
+        val pr = parse(render(dt))
+        val prpr = pr flatMap (x => parse(render(x)))
+
+        pr.fold(
+          f => false, // should not fail the first time
+          prS => prpr.fold(
+            f => false, // should not fail the second time
+            prprS => idt.identical(prS, prprS) == booleanValueSpace.trueValue // should be identical as cannonical
+          )
+        )
+      }
+    }
+
+    def lexicalMapplingLaw(implicit
+                           _valueSpace: ValueSpace[xs],
+                           _saptd: SpecialAndPrimitiveTypesDeclarations[xs]) =
+      new LexicalMappingLaw {
+        override protected val valueSpace: ValueSpace[xs] = _valueSpace
+        override protected val saptd: SpecialAndPrimitiveTypesDeclarations[xs] = _saptd
+      }
+  }
 
   /**
    * A type has a qname associated with it.
