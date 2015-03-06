@@ -10,6 +10,20 @@ import w3c.typeclass._
  */
 trait SpecialAndPrimitiveTypes {
 
+  /**
+   * The type of literals.
+   *
+   * <blockquote>
+   * A sequence of zero or more characters in the Universal Character Set (UCS) which may or may not prove upon
+   * inspection to be a member of the ·lexical space· of a given datatype and thus a ·lexical representation· of a given
+   * value in that datatype's ·value space·, is referred to as a literal. The term is used indifferently both for
+   * character sequences which are members of a particular ·lexical space· and for those which are not.
+   * </blockquote>
+   *
+   * See: http://www.w3.org/TR/xmlschema11-2/#dt-literal
+   */
+  type literal
+
   // special types
   type anyType
   type anySimpleType
@@ -76,6 +90,8 @@ trait BuiltInPrimitivesHierarchy[xs <: SpecialAndPrimitiveTypes] {
 trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
 
   self : LexicalSpace[xs] with ValueSpace[xs] =>
+
+  import Literal.ops._
 //
 //  type datatypeWitness[DT] = SomeExists[
 //    Special[DT] :+:
@@ -146,8 +162,8 @@ trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
   implicit def booleanLexicalMapping: LexicalMapping[xs#boolean]
   implicit def booleanIsPrimitive: Primitive[xs#boolean]
   implicit def booleanValueSpace: BooleanValueSpace[xs#boolean] = new BooleanValueSpace[xs#boolean] {
-    override val trueValue: xs#boolean  = "true".^^[xs#boolean]
-    override val falseValue: xs#boolean = "false".^^[xs#boolean]
+    override val trueValue: xs#boolean  = lit"true".^^[xs#boolean]
+    override val falseValue: xs#boolean = lit"false".^^[xs#boolean]
     override def booleanFrom(b: Boolean) = if(b) trueValue else falseValue
   }
 
