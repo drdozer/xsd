@@ -18,6 +18,8 @@ import FailureTree._
  */
 trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
 
+  self : Datatypes[xs] =>
+  
   @typeclass trait Literal[L <: xs#literal] {
     @op("^") def parseLiteral[DT](lit: L)(implicit syntax: LexicalMapping[DT]): Validation[FailureTree, DT] =
       syntax.parse(lit)
@@ -123,14 +125,14 @@ trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
   (implicit
    lhq: HasQName[L],
    ehq: HasQName[E],
-   listOf: ListDatatype.Aux[L, E],
+   listValueSpace: ListValueSpace[L, E],
    eLex: LexicalMapping[E]): LexicalMapping[L] = new LexicalMapping[L] {
     // render a list by rendering the elements, separated by a string
-    override def render(dt: L) = literalLiteral(listOf.elements(dt).map(eLex render _).mkString(" "))
+    override def render(dt: L) = literalLiteral(listValueSpace.elements(dt).map(eLex render _).mkString(" "))
 
     // parse a list by splitting on elements and parsing those
     override def parse(lit: xs#literal) = {
-      val allParsed = lit.literalString.split( """\s+""").map(s => eLex parse literalLiteral(s)).to[List]
+      val allParsed = lit.literalString.split( """\s+""").map(s => eLex parse literalLiteral(s)).to[scala.collection.immutable.List]
 
       val withErrorIndexes = allParsed.zipWithIndex.map {
         case (p, i) => p.leftMap(f => (s"Parse failed at $i", f :: Nil).failureTree.wrapNel)
@@ -138,7 +140,7 @@ trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
 
       val combined = withErrorIndexes.sequence[({type l[a] = ValidationNel[FailureTree, a]})#l, E]
 
-      combined.map(listOf.fromElements(_ :_*)).leftMap(fs =>
+      combined.map(listValueSpace.fromElements(_ :_*)).leftMap(fs =>
         StringFailure(s"Could not parse ${qnameOf[L]} as list of ${qnameOf[E]}", fs.list))
     }
   }
@@ -168,7 +170,7 @@ trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
   RendFs <: HList, As <: Coproduct,
   ParseFs <: HList, Strings <: HList, Parseds <: HList]
   (implicit
-   unionDatatype: UnionDatatype.Aux[U, Ts],
+   unionValueSpace: UnionValueSpace[U, Ts],
    lexicalSpaces: AllImplicitly.Aux[LexicalMapping, Ts, Is],
    renderMapper: hlist.Mapper.Aux[toRender.type, Is, RendFs],
    zipRenderers: w3c.typeclass.ZipApply.Aux[RendFs, Ts, As],
@@ -182,7 +184,7 @@ trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
     {
       override def render(dt: U) = {
         val renderers = renderMapper(lexicalSpaces.out)
-        val dtCP = unionDatatype.asCoproduct(dt)
+        val dtCP = unionValueSpace.asCoproduct(dt)
         val rendered = zipRenderers(renderers, dtCP)
         foldOutLiteral.apply(rendered)
       }
@@ -192,7 +194,7 @@ trait LexicalSpace[xs <: SpecialAndPrimitiveTypes] {
         val ss = constMapper(lit, parsers)
         val parsed = zipParsers.apply(parsers, ss)
         val ts = foldOutParseResult.apply(parsed, "No lexical space found".failureTree.failureNel[CNil])
-        ts.map(unionDatatype.fromCoproduct)
+        ts.map(unionValueSpace.fromCoproduct)
       }
     }
 

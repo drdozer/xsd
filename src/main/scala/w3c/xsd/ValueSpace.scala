@@ -12,6 +12,11 @@ import w3c.typeclass.{DoesNotExist, Caster}
  */
 trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
 
+  self: Datatypes[xs] =>
+
+
+
+
   /**
    * The globally-defined identity relation.
    *
@@ -123,14 +128,14 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
     implicit def listIdentity[L1, E1, L2, E2]
     (implicit
      _booleanValueSpace: BooleanValueSpace[xs#boolean],
-     l1IsListOfE1: ListDatatype.Aux[L1, E1],
-     l2IsListOfE2: ListDatatype.Aux[L2, E2],
+     l1ValueSpace: ListValueSpace[L1, E1],
+     l2ValueSpace: ListValueSpace[L2, E2],
      e12id: Identity[E1, E2]): Identity[L1, L2] =
       new Identity[L1, L2] {
         override protected def booleanValueSpace = _booleanValueSpace
         override def identical(lhs: L1, rhs: L2): xs#boolean = {
-          val e1 = l1IsListOfE1.elements(lhs)
-          val e2 = l2IsListOfE2.elements(rhs)
+          val e1 = l1ValueSpace.elements(lhs)
+          val e2 = l2ValueSpace.elements(rhs)
 
           if(
             (e1.isEmpty && e2.isEmpty) ||
@@ -225,14 +230,14 @@ trait ValueSpace[xs <: SpecialAndPrimitiveTypes] {
     implicit def listEquality[L1, E1, L2, E2]
     (implicit
      _booleanValueSpace: BooleanValueSpace[xs#boolean],
-     l1IsListOfE1: ListDatatype.Aux[L1, E1],
-     l2IsListOfE2: ListDatatype.Aux[L2, E2],
+     l1ValueSpace: ListValueSpace[L1, E1],
+     l2ValueSpace: ListValueSpace[L2, E2],
      e12eq: Equality[E1, E2]): Equality[L1, L2] =
       new Equality[L1, L2] {
         override protected def booleanValueSpace = _booleanValueSpace
         override def equal(lhs: L1, rhs: L2): xs#boolean = {
-          val e1 = l1IsListOfE1.elements(lhs)
-          val e2 = l2IsListOfE2.elements(rhs)
+          val e1 = l1ValueSpace.elements(lhs)
+          val e2 = l2ValueSpace.elements(rhs)
 
           if(
             (e1.isEmpty && e2.isEmpty) ||

@@ -44,6 +44,8 @@ trait Facets {
 
 trait FacetTypeclasses[ff <: Facets, xs <: SpecialAndPrimitiveTypes with NumericTypes] {
 
+  self : Datatypes[xs] =>
+
   /**
    * All xsd types, except the ur-types, have a base type.
    *
@@ -156,7 +158,7 @@ trait FacetTypeclasses[ff <: Facets, xs <: SpecialAndPrimitiveTypes with Numeric
      */
     def atomicDerivedFromFinite[DT, BT]
     (implicit
-     atomic: AtomicDatatype[DT],
+     atomic: Atomic[DT],
      baseTypeOf: BaseTypeOf.Aux[DT, BT],
      baseTypeIsFinite: Finite[BT]): Finite[DT] =
       new Finite[DT] {}
@@ -174,7 +176,7 @@ trait FacetTypeclasses[ff <: Facets, xs <: SpecialAndPrimitiveTypes with Numeric
      */
     def atomicInfiniteFinite[DT, BT]
     (implicit
-     atomic: AtomicDatatype[DT],
+     atomic: Atomic[DT],
      baseTypeOf: BaseTypeOf.Aux[DT, BT],
      baseTypeIsCountablyInfinite: CountablyInfinite[BT],
      someLengthOrMax: SomeExists[
@@ -247,7 +249,7 @@ trait FacetTypeclasses[ff <: Facets, xs <: SpecialAndPrimitiveTypes with Numeric
   /**
    * For datatypes ·derived· by ·list·, length is measured in number of list items.
    */
-  implicit def listHasLength[L](implicit asList: ListDatatype[L])
+  implicit def listHasLength[L](implicit asList: List[L])
 
 }
 

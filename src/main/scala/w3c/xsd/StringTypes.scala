@@ -19,8 +19,11 @@ trait StringTypes {
   type ID
   type IDREF
   type ENTITY
+
+  // built-in list types
   type IDREFS
   type ENTITIES
+  type NMTOKENS
 
 }
 
