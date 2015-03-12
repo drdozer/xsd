@@ -108,18 +108,22 @@ trait SpecialAndPrimitiveTypesDeclarations[xs <: SpecialAndPrimitiveTypes] {
   import Literal.ops._
 
   implicit val anyTypeHasQName: HasQName[xs#anyType] = HasQName[xs#anyType]("xs:anyType")
-  implicit def anyTypeLexicalMapping: LexicalMapping[xs#anyType]
   implicit val anyTypeIsSpecial: Special[xs#anyType] = Special.witness[xs#anyType]
   implicit val anyTypeIsBuiltIn: BuiltIn[xs#anyType] = BuiltIn.witness[xs#anyType]
 
   implicit val anySimpleTypeHasQName: HasQName[xs#anySimpleType] = HasQName[xs#anySimpleType]("xs:anySimpleType")
-  implicit def anySimpleTypeLexicalMapping: LexicalMapping[xs#anySimpleType]
+  implicit def anySimpleTypeLexicalMapping: LexicalMapping[xs#anySimpleType] // any literal to any atomic datatype or list
   implicit val anySimpleTypeIsSpecial: Special[xs#anySimpleType] = Special.witness[xs#anySimpleType]
   implicit val anySimpleTypeIsBuiltIn: BuiltIn[xs#anySimpleType] = BuiltIn.witness[xs#anySimpleType]
 
+  implicit val anyAtomicTypeHasQName: HasQName[xs#anyAtomicType] = HasQName[xs#anyAtomicType]("xs:anyAtomicType")
+  implicit def anyAtomicTypeLexicalMapping: LexicalMapping[xs#anyAtomicType] // any primitive
+  implicit val anyAtomicTypeIsSpecial: Special[xs#anyAtomicType] = Special.witness[xs#anyAtomicType]
+  implicit val anyAtomicTypeIsBuiltIn: BuiltIn[xs#anyAtomicType] = BuiltIn.witness[xs#anyAtomicType]
+
 
   implicit val stringHasQName: HasQName[xs#string] = HasQName[xs#string]("xs:string")
-  implicit def stringLexicalMapping: LexicalMapping[xs#string]
+  implicit def stringLexicalMapping: LexicalMapping[xs#string] // in an identity relation with xs#literal
   implicit val stringIsPrimitive: Primitive[xs#string] = Primitive.witness[xs#string]
   implicit val stringIsBuiltIn: BuiltIn[xs#string] = BuiltIn.witness[xs#string]
 
